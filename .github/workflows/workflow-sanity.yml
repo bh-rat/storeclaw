@@ -3,7 +3,7 @@ name: Workflow Sanity
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [storeclaw]
 
 concurrency:
   group: workflow-sanity-${{ github.event.pull_request.number || github.sha }}

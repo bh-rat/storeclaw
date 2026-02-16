@@ -1,20 +1,8 @@
 name: Labeler
 
-on:
-  pull_request_target:
-    types: [opened, synchronize, reopened]
-  issues:
-    types: [opened]
-  workflow_dispatch:
-    inputs:
-      max_prs:
-        description: "Maximum number of open PRs to process (0 = all)"
-        required: false
-        default: "200"
-      per_page:
-        description: "PRs per page (1-100)"
-        required: false
-        default: "50"
+# Disabled: depends on upstream OpenClaw GitHub App (app-id 2729701).
+# Re-enable when StoreClaw has its own GitHub App or bot token.
+on: workflow_dispatch
 
 permissions: {}
 

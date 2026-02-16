@@ -1,10 +1,8 @@
 name: Auto response
 
-on:
-  issues:
-    types: [opened, edited, labeled]
-  pull_request_target:
-    types: [labeled]
+# Disabled: depends on upstream OpenClaw GitHub App (app-id 2729701).
+# Re-enable when StoreClaw has its own GitHub App or bot token.
+on: workflow_dispatch
 
 permissions: {}
 

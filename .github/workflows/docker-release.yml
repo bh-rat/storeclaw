@@ -3,7 +3,7 @@ name: Docker Release
 on:
   push:
     branches:
-      - main
+      - storeclaw
     tags:
       - "v*"
     paths-ignore:

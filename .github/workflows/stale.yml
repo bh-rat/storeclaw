@@ -1,9 +1,8 @@
 name: Stale
 
-on:
-  schedule:
-    - cron: "17 3 * * *"
-  workflow_dispatch:
+# Disabled: depends on upstream OpenClaw GitHub App and references OpenClaw branding.
+# Re-enable when StoreClaw has its own bot token and updated messaging.
+on: workflow_dispatch
 
 permissions: {}
 

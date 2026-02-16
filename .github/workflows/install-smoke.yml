@@ -1,10 +1,7 @@
 name: Install Smoke
 
-on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
+# Disabled: tests upstream openclaw.ai install scripts which don't exist for StoreClaw yet.
+on: workflow_dispatch
 
 concurrency:
   group: install-smoke-${{ github.event.pull_request.number || github.sha }}

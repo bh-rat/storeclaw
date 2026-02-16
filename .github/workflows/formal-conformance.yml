@@ -1,7 +1,8 @@
 name: Formal models (informational conformance)
 
-on:
-  pull_request:
+# Disabled: checks against upstream OpenClaw formal models repo (vignesh07/clawdbot-formal-models).
+# Not relevant to StoreClaw.
+on: workflow_dispatch
 
 concurrency:
   group: formal-conformance-${{ github.event.pull_request.number || github.ref_name }}
