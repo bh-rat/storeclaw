@@ -1,0 +1,50 @@
+# StoreClaw
+
+**StoreClaw** is a micro-business AI assistant for retail and ecommerce, built on the OpenClaw codebase.
+
+## Codebase Origin
+
+Existing source uses `openclaw` naming throughout (CLI, imports, config paths, docs). This is expected — migration is incremental. **All new code, comments, and docs you write must use "StoreClaw" / `storeclaw`.** Do not bulk-rename existing `openclaw` references unless explicitly asked.
+
+The product vision is actively being shaped; do not assume existing OpenClaw features define what StoreClaw will be.
+
+## Tech Stack
+
+- **Runtime**: Node 22+ (Bun also supported for dev/scripts)
+- **Language**: TypeScript (ESM, strict mode)
+- **Package Manager**: pnpm (keep `pnpm-lock.yaml` in sync)
+- **Lint/Format**: Oxlint, Oxfmt (`pnpm check`)
+- **Tests**: Vitest with V8 coverage
+- **CLI Framework**: Commander + clack/prompts
+- **Build**: tsdown (outputs to `dist/`)
+
+## Commands
+
+- **Install**: `pnpm install`
+- **Build**: `pnpm build`
+- **Type-check**: `pnpm tsgo`
+- **Lint/format**: `pnpm check`
+- **Format fix**: `pnpm format:fix`
+- **Tests**: `pnpm test`
+- **Dev**: `pnpm dev`
+
+## Code Quality
+
+- TypeScript (ESM), strict typing, avoid `any`.
+- Keep files under ~500 LOC; split when clarity improves.
+- Tests colocated as `*.test.ts` next to source.
+- Use `.js` extension for cross-package imports (ESM).
+- Direct imports only — no re-export wrapper files.
+- `import type { X }` for type-only imports.
+- Run `pnpm check` before commits.
+
+## Anti-Redundancy
+
+- Before creating any formatter, utility, or helper, search for existing implementations first.
+- If a function already exists, import it — do NOT create a duplicate.
+- Avoid files that just re-export from another file.
+
+## Further Reading
+
+- Full repo guidelines: `AGENTS.md`
+- Claude Code context: `CLAUDE.md`

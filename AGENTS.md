@@ -1,6 +1,13 @@
 # Repository Guidelines
 
-- Repo: https://github.com/openclaw/openclaw
+> **This is StoreClaw** — a micro-business AI assistant built on the OpenClaw codebase.
+> The source still uses `openclaw` naming pervasively (CLI, imports, config paths, docs).
+> This is expected; migration is incremental. **All new code, comments, and docs you write
+> must use "StoreClaw" / `storeclaw`.** Do not bulk-rename existing `openclaw` references
+> unless explicitly asked. See `CLAUDE.md` for full context.
+
+- Repo: https://github.com/bh-rat/storeclaw (fork of openclaw/openclaw)
+- Default branch: `storeclaw` (not `main`). All PR workflows, rebases, and git operations target `origin/storeclaw`.
 - GitHub issues/comments/PR comments: use literal multiline strings or `-F - <<'EOF'` (or $'...') for real newlines; never embed "\\n".
 
 ## Project Structure & Module Organization

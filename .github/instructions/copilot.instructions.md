@@ -1,4 +1,9 @@
-# OpenClaw Codebase Patterns
+# StoreClaw Codebase Patterns
+
+> **This is StoreClaw** — a micro-business AI assistant built on the OpenClaw codebase.
+> Existing source still uses `openclaw` naming throughout — this is expected.
+> **All new code, comments, and docs must use "StoreClaw" / `storeclaw`.**
+> Do not bulk-rename existing `openclaw` references unless explicitly asked.
 
 **Always reuse existing code - no redundancy!**
 
