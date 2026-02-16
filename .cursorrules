@@ -8,6 +8,8 @@ Existing source uses `openclaw` naming throughout (CLI, imports, config paths, d
 
 The product vision is actively being shaped; do not assume existing OpenClaw features define what StoreClaw will be.
 
+StoreClaw currently focuses on helping the business owner and their team. Customer-facing features are not in scope yet.
+
 ## Tech Stack
 
 - **Runtime**: Node 22+ (Bun also supported for dev/scripts)

@@ -18,6 +18,8 @@ This repo is forked from [OpenClaw](https://github.com/openclaw/openclaw). The v
 
 StoreClaw is an agentic AI assistant for micro enterprises — especially retail and ecommerce. The product vision and feature set are actively being shaped; do not assume existing OpenClaw features define what StoreClaw will be.
 
+StoreClaw currently focuses on helping the business owner and their team. Customer-facing features are not in scope yet.
+
 ## Build & Dev Commands
 
 - **Runtime**: Node 22+

@@ -4,6 +4,7 @@
 > Existing source still uses `openclaw` naming throughout — this is expected.
 > **All new code, comments, and docs must use "StoreClaw" / `storeclaw`.**
 > Do not bulk-rename existing `openclaw` references unless explicitly asked.
+> StoreClaw currently focuses on the owner/team. Customer-facing features are not in scope yet.
 
 **Always reuse existing code - no redundancy!**
 

@@ -4,7 +4,7 @@
 > The source still uses `openclaw` naming pervasively (CLI, imports, config paths, docs).
 > This is expected; migration is incremental. **All new code, comments, and docs you write
 > must use "StoreClaw" / `storeclaw`.** Do not bulk-rename existing `openclaw` references
-> unless explicitly asked. See `CLAUDE.md` for full context.
+> unless explicitly asked. StoreClaw currently focuses on the owner/team. Customer-facing features are not in scope yet. See `CLAUDE.md` for full context.
 
 - Repo: https://github.com/bh-rat/storeclaw (fork of openclaw/openclaw)
 - Default branch: `storeclaw` (not `main`). All PR workflows, rebases, and git operations target `origin/storeclaw`.
