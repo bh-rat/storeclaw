@@ -4,7 +4,7 @@
   <img src="docs/images/storeclaw-banner.png" alt="StoreClaw" width="420" />
 </p>
 
-**StoreClaw** is an attempt to build an agentic AI assistant for micro enterprises especially retail and ecommerce businesses through natural conversation.
+**StoreClaw** is an attempt to build an agentic AI assistant for micro enterprises especially retail and ecommerce, powered by natural conversations.
 
 ## License
 
