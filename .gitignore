@@ -80,6 +80,9 @@ USER.md
 # local tooling
 .serena/
 
+# Thesis / internal design docs (local only)
+thesis/
+
 # Agent credentials and memory (NEVER COMMIT)
 /memory/
 .agent/*.json
