@@ -39,6 +39,10 @@ StoreClaw currently focuses on helping the business owner and their team. Custom
 - Commits via `scripts/committer "<msg>" <file...>` (not manual git add/commit).
 - Run `pnpm check` before committing.
 
+## Thesis Docs
+
+Design thesis lives in `thesis/`. Each file has YAML frontmatter with `summary` and `read_when` hints — consult these before architectural or product decisions.
+
 ## Further Reading
 
 - Full repo guidelines: `AGENTS.md`
