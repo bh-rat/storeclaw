@@ -39,6 +39,7 @@ import { applyMergePatch } from "./merge-patch.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
+import { applyStoreclawDefaults } from "./storeclaw-defaults.js";
 import {
   validateConfigObjectRawWithPlugins,
   validateConfigObjectWithPlugins,
@@ -583,7 +584,11 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         applyCompactionDefaults(
           applyContextPruningDefaults(
             applyAgentDefaults(
-              applySessionDefaults(applyLoggingDefaults(applyMessageDefaults(validated.config))),
+              applySessionDefaults(
+                applyLoggingDefaults(
+                  applyMessageDefaults(applyStoreclawDefaults(validated.config)),
+                ),
+              ),
             ),
           ),
         ),
@@ -635,7 +640,11 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         applyModelDefaults(
           applyCompactionDefaults(
             applyContextPruningDefaults(
-              applyAgentDefaults(applySessionDefaults(applyMessageDefaults({}))),
+              applyAgentDefaults(
+                applySessionDefaults(
+                  applyLoggingDefaults(applyMessageDefaults(applyStoreclawDefaults({}))),
+                ),
+              ),
             ),
           ),
         ),
@@ -769,7 +778,9 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
               applyModelDefaults(
                 applyAgentDefaults(
                   applySessionDefaults(
-                    applyLoggingDefaults(applyMessageDefaults(validated.config)),
+                    applyLoggingDefaults(
+                      applyMessageDefaults(applyStoreclawDefaults(validated.config)),
+                    ),
                   ),
                 ),
               ),
