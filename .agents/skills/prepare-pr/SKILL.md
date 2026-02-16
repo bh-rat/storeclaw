@@ -16,7 +16,7 @@ Prepare the PR head branch for merge after `/review-pr`.
 
 ## Safety
 
-- Never push to `main`.
+- Never push to `storeclaw`.
 - Only push to PR head with explicit `--force-with-lease` against known head SHA.
 - Do not run `git clean -fdx`.
 - Wrappers are cwd-agnostic; run from repo root or PR worktree.

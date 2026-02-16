@@ -97,9 +97,9 @@ Use ChatGPT 5.3 Codex High. Fall back to 5.2 Codex High or 5.3 Codex Medium if n
 
 ## Rebase and conflict resolution
 
-Before any substantive review or prep work, **always rebase the PR branch onto current `main` and resolve merge conflicts first**. A PR that cannot cleanly rebase is not ready for review — fix conflicts before evaluating correctness.
+Before any substantive review or prep work, **always rebase the PR branch onto current `storeclaw` and resolve merge conflicts first**. A PR that cannot cleanly rebase is not ready for review — fix conflicts before evaluating correctness.
 
-- During `prepare-pr`: rebase onto `main` as the first step, before fixing findings or running gates.
+- During `prepare-pr`: rebase onto `storeclaw` as the first step, before fixing findings or running gates.
 - If conflicts are complex or touch areas you do not understand, stop and escalate.
 - Prefer **rebase** for linear history; **squash** when commit history is messy or unhelpful.
 
@@ -140,11 +140,11 @@ Gate set:
 ## Review mode vs landing mode
 
 - **Review mode (PR link only):** read `gh pr view`/`gh pr diff`; **do not** switch branches; **do not** change code.
-- **Landing mode (exception path):** use only when normal `review-pr -> prepare-pr -> merge-pr` flow cannot safely preserve attribution or cannot satisfy branch protection. Create an integration branch from `main`, bring in PR commits (**prefer rebase** for linear history; **merge allowed** when complexity/conflicts make it safer), apply fixes, add changelog (+ thanks + PR #), run full gate **locally before committing** (`pnpm build && pnpm check && pnpm test`), commit, merge back to `main`, then `git switch main` (never stay on a topic branch after landing). Important: the contributor needs to be in the git graph after this!
+- **Landing mode (exception path):** use only when normal `review-pr -> prepare-pr -> merge-pr` flow cannot safely preserve attribution or cannot satisfy branch protection. Create an integration branch from `storeclaw`, bring in PR commits (**prefer rebase** for linear history; **merge allowed** when complexity/conflicts make it safer), apply fixes, add changelog (+ thanks + PR #), run full gate **locally before committing** (`pnpm build && pnpm check && pnpm test`), commit, merge back to `storeclaw`, then `git switch storeclaw` (never stay on a topic branch after landing). Important: the contributor needs to be in the git graph after this!
 
 ## Pre-review safety checks
 
-- Before starting a review when a GH Issue/PR is pasted: `review-pr`/`scripts/pr-review` should create and use an isolated `.worktrees/pr-<PR>` checkout from `origin/main` automatically. Do not require a clean main checkout, and do not run `git pull` in a dirty main checkout.
+- Before starting a review when a GH Issue/PR is pasted: `review-pr`/`scripts/pr-review` should create and use an isolated `.worktrees/pr-<PR>` checkout from `origin/storeclaw` automatically. Do not require a clean storeclaw checkout, and do not run `git pull` in a dirty storeclaw checkout.
 - PR review calls: prefer a single `gh pr view --json ...` to batch metadata/comments; run `gh pr diff` only when needed.
 - PRs should summarize scope, note testing performed, and mention any user-facing changes or new flags.
 - Read `docs/help/submitting-a-pr.md` ([Submitting a PR](https://docs.openclaw.ai/help/submitting-a-pr)) for what we expect from contributors.
@@ -189,7 +189,7 @@ Stop and escalate instead of continuing if:
 Purpose:
 
 - Make the PR merge-ready on its head branch.
-- Rebase onto current `main` first, then fix blocker/important findings, then run gates.
+- Rebase onto current `storeclaw` first, then fix blocker/important findings, then run gates.
 - In fresh worktrees, bootstrap dependencies before local gates (`pnpm install --frozen-lockfile`).
 
 Expected output:
@@ -234,7 +234,7 @@ Go or no-go checklist before merge:
 - All BLOCKER and IMPORTANT findings are resolved.
 - Verification is meaningful and regression risk is acceptably low.
 - Changelog is updated (mandatory) and docs are updated when required.
-- Required CI checks are green and the branch is not behind `main`.
+- Required CI checks are green and the branch is not behind `storeclaw`.
 
 Expected output:
 

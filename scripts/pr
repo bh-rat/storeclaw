@@ -79,17 +79,17 @@ enter_worktree() {
 
   cd "$root"
   gh auth status >/dev/null
-  git fetch origin main
+  git fetch origin storeclaw
 
   local dir=".worktrees/pr-$pr"
   if [ -d "$dir" ]; then
     cd "$dir"
-    git fetch origin main
+    git fetch origin storeclaw
     if [ "$reset_to_main" = "true" ]; then
-      git checkout -B "temp/pr-$pr" origin/main
+      git checkout -B "temp/pr-$pr" origin/storeclaw
     fi
   else
-    git worktree add "$dir" -b "temp/pr-$pr" origin/main
+    git worktree add "$dir" -b "temp/pr-$pr" origin/storeclaw
     cd "$dir"
   fi
 
@@ -258,8 +258,8 @@ EOF_ENV
 review_checkout_main() {
   local pr="$1"
   enter_worktree "$pr" false
-  git fetch origin main
-  git checkout --detach origin/main
+  git fetch origin storeclaw
+  git checkout --detach origin/storeclaw
   set_review_mode main
 
   echo "review mode set to main baseline"
@@ -297,9 +297,9 @@ review_guard() {
   case "${REVIEW_MODE:-}" in
     main)
       local expected_main_sha
-      expected_main_sha=$(git rev-parse origin/main)
+      expected_main_sha=$(git rev-parse origin/storeclaw)
       if [ "$head_sha" != "$expected_main_sha" ]; then
-        echo "Review guard failed: expected HEAD at origin/main ($expected_main_sha) for main baseline mode, got $head_sha"
+        echo "Review guard failed: expected HEAD at origin/storeclaw ($expected_main_sha) for main baseline mode, got $head_sha"
         exit 1
       fi
       ;;
@@ -518,7 +518,7 @@ review_init() {
 
   git fetch origin "pull/$pr/head:pr-$pr" --force
   local mb
-  mb=$(git merge-base origin/main "pr-$pr")
+  mb=$(git merge-base origin/storeclaw "pr-$pr")
 
   cat > .local/review-context.env <<EOF_ENV
 PR_NUMBER=$pr
@@ -569,8 +569,8 @@ prepare_init() {
 
   git fetch origin "pull/$pr/head:pr-$pr" --force
   git checkout -B "pr-$pr-prep" "pr-$pr"
-  git fetch origin main
-  git rebase origin/main
+  git fetch origin storeclaw
+  git rebase origin/storeclaw
 
   cat > .local/prep-context.env <<EOF_ENV
 PR_NUMBER=$pr
@@ -584,7 +584,7 @@ EOF_ENV
     cat > .local/prep.md <<EOF_PREP
 # PR $pr prepare log
 
-- Initialized prepare context and rebased prep branch on origin/main.
+- Initialized prepare context and rebased prep branch on origin/storeclaw.
 EOF_PREP
   fi
 
@@ -612,8 +612,8 @@ prepare_validate_commit() {
   local subject
   subject=$(git log -1 --pretty=%s)
 
-  echo "$subject" | rg -q "openclaw#$pr_number" || {
-    echo "ERROR: commit subject missing openclaw#$pr_number"
+  echo "$subject" | rg -q "storeclaw#$pr_number" || {
+    echo "ERROR: commit subject missing storeclaw#$pr_number"
     exit 1
   }
 
@@ -633,7 +633,7 @@ prepare_gates() {
   bootstrap_deps_if_needed
 
   local changed_files
-  changed_files=$(git diff --name-only origin/main...HEAD)
+  changed_files=$(git diff --name-only origin/storeclaw...HEAD)
   local non_docs
   non_docs=$(printf '%s\n' "$changed_files" | grep -Ev '^(docs/|README.*\.md$|CHANGELOG\.md$|.*\.md$|.*\.mdx$|mintlify\.json$|docs\.json$)' || true)
 
@@ -752,9 +752,9 @@ prepare_push() {
   local pr_head_sha_after
   pr_head_sha_after=$(gh pr view "$pr" --json headRefOid --jq .headRefOid)
 
-  git fetch origin main
+  git fetch origin storeclaw
   git fetch origin "pull/$pr/head:pr-$pr-verify" --force
-  git merge-base --is-ancestor origin/main "pr-$pr-verify" || {
+  git merge-base --is-ancestor origin/storeclaw "pr-$pr-verify" || {
     echo "PR branch is behind main after push."
     exit 1
   }
@@ -771,7 +771,7 @@ prepare_push() {
   cat >> .local/prep.md <<EOF_PREP
 - Gates passed and push succeeded to branch $PR_HEAD.
 - Verified PR head SHA matches local prep HEAD.
-- Verified PR head contains origin/main.
+- Verified PR head contains origin/storeclaw.
 EOF_PREP
 
   cat > .local/prep.env <<EOF_ENV
@@ -866,9 +866,9 @@ merge_verify() {
     exit 1
   fi
 
-  git fetch origin main
+  git fetch origin storeclaw
   git fetch origin "pull/$pr/head:pr-$pr" --force
-  git merge-base --is-ancestor origin/main "pr-$pr" || {
+  git merge-base --is-ancestor origin/storeclaw "pr-$pr" || {
     echo "PR branch is behind main."
     exit 1
   }
