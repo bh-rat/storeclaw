@@ -49,7 +49,7 @@ Capture what matters. Decisions, context, things to remember. Skip the secrets u
 - **Memory is limited** — if you want to remember something, WRITE IT TO A FILE
 - "Mental notes" don't survive session restarts. Files do.
 - When someone says "remember this" — update `memory/YYYY-MM-DD.md` or relevant file
-- When you learn a business fact — update BUSINESS.md, OWNER.md, TEAM.md, or create a new file
+- When you learn a business fact — update BUSINESS.md, OWNER.md, or TEAM.md
 - **Text > Brain**
 
 ## Progressive Learning
