@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_IDENTITY_FILENAME } from "./workspace.js";
+import { DEFAULT_BUSINESS_FILENAME, DEFAULT_IDENTITY_FILENAME } from "./workspace.js";
 
 export type AgentIdentityFile = {
   name?: string;
@@ -104,4 +104,107 @@ export function loadIdentityFromFile(identityPath: string): AgentIdentityFile | 
 export function loadAgentIdentityFromWorkspace(workspace: string): AgentIdentityFile | null {
   const identityPath = path.join(workspace, DEFAULT_IDENTITY_FILENAME);
   return loadIdentityFromFile(identityPath);
+}
+
+// --- Business profile types and parsing ---
+
+export type BusinessProfileFile = {
+  name?: string;
+  type?: string;
+  location?: string;
+  hours?: string;
+};
+
+export type OwnerProfileFile = {
+  name?: string;
+  phone?: string;
+  language?: string;
+  timezone?: string;
+};
+
+const BUSINESS_PLACEHOLDER_VALUES = new Set([
+  "e.g. electronics shop, tiffin service, clothing store, general store",
+  "city, area, or address",
+  "e.g. 10am-8pm, mon-sat",
+]);
+
+export function isBusinessPlaceholder(value: string): boolean {
+  const normalized = normalizeIdentityValue(value);
+  return BUSINESS_PLACEHOLDER_VALUES.has(normalized);
+}
+
+function parseKeyValueMarkdown<T extends Record<string, string | undefined>>(
+  content: string,
+  fieldMap: Record<string, keyof T>,
+  placeholderCheck: (value: string) => boolean,
+): T {
+  const result = {} as T;
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const cleaned = line.trim().replace(/^\s*-\s*/, "");
+    const colonIndex = cleaned.indexOf(":");
+    if (colonIndex === -1) {
+      continue;
+    }
+    const label = cleaned.slice(0, colonIndex).replace(/[*_]/g, "").trim().toLowerCase();
+    const value = cleaned
+      .slice(colonIndex + 1)
+      .replace(/^[*_]+|[*_]+$/g, "")
+      .trim();
+    if (!value) {
+      continue;
+    }
+    if (placeholderCheck(value)) {
+      continue;
+    }
+    const field = fieldMap[label];
+    if (field) {
+      (result as Record<string, string>)[field as string] = value;
+    }
+  }
+  return result;
+}
+
+export function parseBusinessMarkdown(content: string): BusinessProfileFile {
+  return parseKeyValueMarkdown<BusinessProfileFile>(
+    content,
+    {
+      name: "name",
+      type: "type",
+      location: "location",
+      hours: "hours",
+    },
+    isBusinessPlaceholder,
+  );
+}
+
+export function parseOwnerMarkdown(content: string): OwnerProfileFile {
+  return parseKeyValueMarkdown<OwnerProfileFile>(
+    content,
+    {
+      name: "name",
+      phone: "phone",
+      language: "language",
+      timezone: "timezone",
+    },
+    isBusinessPlaceholder,
+  );
+}
+
+export function businessProfileHasValues(profile: BusinessProfileFile): boolean {
+  return Boolean(profile.name || profile.type || profile.location || profile.hours);
+}
+
+export function loadBusinessProfileFromWorkspace(workspace: string): BusinessProfileFile | null {
+  const businessPath = path.join(workspace, DEFAULT_BUSINESS_FILENAME);
+  try {
+    const content = fs.readFileSync(businessPath, "utf-8");
+    const parsed = parseBusinessMarkdown(content);
+    if (!businessProfileHasValues(parsed)) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
 }
