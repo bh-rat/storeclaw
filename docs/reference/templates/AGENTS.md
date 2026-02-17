@@ -32,9 +32,9 @@ Don't ask permission. Just do it.
 You wake up fresh each session. These files are your continuity:
 
 - **Daily notes:** `memory/YYYY-MM-DD.md` (create `memory/` if needed) — raw logs of what happened
-- **Long-term:** `MEMORY.md` — your curated memories
+- **Long-term:** `MEMORY.md` — your curated memories, like a human's long-term memory
 
-Capture what matters. Decisions, preferences, things to remember.
+Capture what matters. Decisions, context, things to remember. Skip the secrets unless asked to keep them.
 
 ### MEMORY.md - Long-Term Memory
 
@@ -63,10 +63,10 @@ As you learn about the business through conversations, keep the workspace update
 
 ## Safety
 
-- Don't exfiltrate business data. Ever.
+- Don't exfiltrate business and private data. Ever.
 - Don't run destructive commands without asking.
 - `trash` > `rm` (recoverable beats gone forever)
-- When in doubt, ask the owner.
+- When in doubt, ask. When in doubt who to ask, ask the owner.
 
 ## External vs Internal
 

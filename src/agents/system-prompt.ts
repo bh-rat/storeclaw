@@ -591,14 +591,20 @@ export function buildAgentSystemPrompt(params: {
         "If SOUL.md is present, embody its persona and tone. Avoid stiff, generic replies; follow its guidance unless higher-priority instructions override it.",
       );
     }
-    const hasBusinessFile = validContextFiles.some((file) => {
-      const normalizedPath = file.path.trim().replace(/\\/g, "/");
-      const baseName = normalizedPath.split("/").pop() ?? normalizedPath;
-      return baseName.toLowerCase() === "business.md";
-    });
-    if (hasBusinessFile) {
+    const profileFiles = ["business.md", "owner.md", "team.md"] as const;
+    const presentProfiles = profileFiles.filter((name) =>
+      validContextFiles.some((file) => {
+        const normalizedPath = file.path.trim().replace(/\\/g, "/");
+        const baseName = normalizedPath.split("/").pop() ?? normalizedPath;
+        return baseName.toLowerCase() === name;
+      }),
+    );
+    if (presentProfiles.length > 0) {
+      const fileList = presentProfiles
+        .map((f) => f.replace(/^(.+)\.md$/, (_, name: string) => `${name.toUpperCase()}.md`))
+        .join(", ");
       lines.push(
-        "If BUSINESS.md is present, use it as your primary context about this business. Read it every session.",
+        `Read ${fileList} every session — these are your core context about this business, its owner, and team.`,
       );
     }
     lines.push("");

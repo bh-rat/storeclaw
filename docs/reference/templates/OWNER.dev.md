@@ -7,7 +7,7 @@ read_when:
 
 # OWNER.md - Business Owner
 
-- **Name:** Vikram Sharma
+- **Name:** Raju
 - **Phone:**
 - **Language:** Multilingual
 - **Timezone:** Asia/Kolkata

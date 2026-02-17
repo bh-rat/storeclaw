@@ -13,7 +13,7 @@ This folder is the dev business workspace for testing StoreClaw.
 
 - If BOOTSTRAP.md exists, follow its onboarding script and delete it once complete.
 - Business profile lives in BUSINESS.md (pre-filled: Sharma Electronics).
-- Owner profile lives in OWNER.md (pre-filled: Vikram Sharma).
+- Owner profile lives in OWNER.md.
 - Agent identity lives in IDENTITY.md.
 - User profile lives in USER.md.
 
