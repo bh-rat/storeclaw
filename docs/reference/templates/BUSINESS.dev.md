@@ -11,7 +11,14 @@ read_when:
 - **Type:** Electronics and mobile accessories shop
 - **Location:** Rajwada area, Indore, MP
 - **Hours:** 10am-8pm, Mon-Sat
+- **Website:** https://sharmaelectronics.example.com
 
 ## Notes
 
 Family-run electronics shop. Sells mobile phones, accessories, chargers, earphones, screen guards. Also does mobile repairs. Regular customers from the neighbourhood. Peak hours are evening 5-8pm. Closed on major festivals.
+
+## Online Presence
+
+- **Website:** Basic product catalog and contact page. Lists mobile phones, accessories, and repair services.
+- **Google Maps:** 4.3 stars, 127 reviews. Listed as "Sharma Electronics" on Google Maps, Rajwada area, Indore.
+- **Social:** Facebook page with ~500 followers. Posts about new phone arrivals and repair offers.

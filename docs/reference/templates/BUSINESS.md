@@ -17,7 +17,12 @@ _This file describes the business StoreClaw is helping. Update it as you learn m
   _(city, area, or address)_
 - **Hours:**
   _(e.g. 10am-8pm, Mon-Sat)_
+- **Website:**
 
 ## Notes
 
 _(Anything else about the business — what they sell, who their customers are, how they operate. Build this over time.)_
+
+## Online Presence
+
+_(Website details, social media, Google Maps listing, online reviews. Populated automatically when enrichment runs.)_

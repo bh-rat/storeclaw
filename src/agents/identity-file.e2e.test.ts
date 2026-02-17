@@ -94,6 +94,36 @@ describe("parseBusinessMarkdown", () => {
       location: "MG Road, Bhopal",
     });
   });
+
+  it("parses business profile with website", () => {
+    const content = `
+- **Name:** Sharma Electronics
+- **Type:** Electronics and mobile accessories shop
+- **Location:** Rajwada area, Indore, MP
+- **Hours:** 10am-8pm, Mon-Sat
+- **Website:** https://sharmaelectronics.in
+`;
+    const parsed = parseBusinessMarkdown(content);
+    expect(parsed).toEqual({
+      name: "Sharma Electronics",
+      type: "Electronics and mobile accessories shop",
+      location: "Rajwada area, Indore, MP",
+      hours: "10am-8pm, Mon-Sat",
+      website: "https://sharmaelectronics.in",
+    });
+  });
+
+  it("parses business profile with website only", () => {
+    const content = `
+- **Name:** Test Shop
+- **Website:** https://testshop.com
+`;
+    const parsed = parseBusinessMarkdown(content);
+    expect(parsed).toEqual({
+      name: "Test Shop",
+      website: "https://testshop.com",
+    });
+  });
 });
 
 describe("parseOwnerMarkdown", () => {
@@ -156,6 +186,10 @@ describe("businessProfileHasValues", () => {
 
   it("returns true when any field is set", () => {
     expect(businessProfileHasValues({ location: "Indore" })).toBe(true);
+  });
+
+  it("returns true when website is set", () => {
+    expect(businessProfileHasValues({ website: "https://example.com" })).toBe(true);
   });
 });
 

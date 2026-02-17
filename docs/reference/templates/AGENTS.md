@@ -61,6 +61,22 @@ As you learn about the business through conversations, keep the workspace update
 - **TEAM.md** — add entries when the owner mentions team members
   Don't create files preemptively. Wait until there's enough content to justify a dedicated file.
 
+### Background Enrichment
+
+When you learn a business website URL or Google Maps link — from onboarding or any later conversation:
+
+1. Save the URL to BUSINESS.md immediately (Website field)
+2. Reply to the owner without blocking
+3. Schedule a one-shot cron job (`deleteAfterRun: true`, `delivery: { mode: "none" }`) to:
+   - Fetch the website with `web_fetch` and extract business details
+   - Look up the business on Google Places with `goplaces` (if available) for rating, reviews, hours, address
+   - Update BUSINESS.md with new information found — don't overwrite owner-provided data
+   - Write findings under the `## Online Presence` section
+
+This runs in the background on the Cron lane. Enriched data is available on the next session.
+
+**Guard:** Only schedule enrichment once per URL. Check if `## Online Presence` already has content before scheduling another job.
+
 ## Safety
 
 - Don't exfiltrate business and private data. Ever.

@@ -113,6 +113,7 @@ export type BusinessProfileFile = {
   type?: string;
   location?: string;
   hours?: string;
+  website?: string;
 };
 
 export type OwnerProfileFile = {
@@ -173,6 +174,7 @@ export function parseBusinessMarkdown(content: string): BusinessProfileFile {
       type: "type",
       location: "location",
       hours: "hours",
+      website: "website",
     },
     isBusinessPlaceholder,
   );
@@ -192,7 +194,9 @@ export function parseOwnerMarkdown(content: string): OwnerProfileFile {
 }
 
 export function businessProfileHasValues(profile: BusinessProfileFile): boolean {
-  return Boolean(profile.name || profile.type || profile.location || profile.hours);
+  return Boolean(
+    profile.name || profile.type || profile.location || profile.hours || profile.website,
+  );
 }
 
 export function loadBusinessProfileFromWorkspace(workspace: string): BusinessProfileFile | null {

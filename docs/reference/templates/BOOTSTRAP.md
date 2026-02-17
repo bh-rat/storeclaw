@@ -47,6 +47,30 @@ Extract and save what you learned:
 
 Don't fabricate details they didn't share. Leave fields blank rather than guess.
 
+## Background Enrichment
+
+If the owner shared a website URL, Google Maps link, or enough info to look them up:
+
+1. Save whatever URL they gave to the **Website** field in BUSINESS.md right away
+2. Reply to the owner — don't block on website analysis
+3. Schedule a one-shot background job to enrich their profile:
+
+```
+cron(action: "add", job: {
+  name: "enrich-business-profile",
+  schedule: { kind: "at", at: "<30 seconds from now, ISO-8601>" },
+  sessionTarget: "isolated",
+  deleteAfterRun: true,
+  payload: {
+    kind: "agentTurn",
+    message: "You are an enrichment agent. Read BUSINESS.md to get the current business profile. Then:\n\n1. If there is a Website URL: use web_fetch to fetch it. Extract useful info — products/services offered, about page, contact details, social media links, business description.\n\n2. If goplaces is available (check with `which goplaces`): run `goplaces search \"<business name> <location>\" --json --limit 3` to find the Google Places listing. If you find a match, run `goplaces details <place_id> --reviews --json` for full details (rating, reviews, address, phone, hours, photos).\n\n3. Update BUSINESS.md:\n   - Fill in any blank fields (Type, Location, Hours) from what you found\n   - Do NOT overwrite fields the owner already filled in\n   - Write a summary under the '## Online Presence' section with what you found from the website and Google Places\n   - Keep the markdown format consistent\n\n4. If web_fetch or goplaces fails, skip that source and continue with what you have. Don't fail the whole job."
+  },
+  delivery: { mode: "none" }
+})
+```
+
+The enrichment runs silently in the background. The owner sees enriched data on their next conversation.
+
 ## When done
 
 Delete this file. The business is onboarded.
