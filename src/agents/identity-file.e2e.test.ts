@@ -81,7 +81,7 @@ describe("parseBusinessMarkdown", () => {
     expect(parsed).toEqual({ name: "Gupta Tiffin Service" });
   });
 
-  it("parses Hinglish-style content", () => {
+  it("parses multilingual content", () => {
     const content = `
 - **Name:** Raju ki Dukaan
 - **Type:** General store
@@ -103,14 +103,14 @@ describe("parseOwnerMarkdown", () => {
 
 - **Name:** Vikram Sharma
 - **Phone:** +91-9876543210
-- **Language:** Hindi-English (Hinglish)
+- **Language:** Multilingual
 - **Timezone:** Asia/Kolkata
 `;
     const parsed = parseOwnerMarkdown(content);
     expect(parsed).toEqual({
       name: "Vikram Sharma",
       phone: "+91-9876543210",
-      language: "Hindi-English (Hinglish)",
+      language: "Multilingual",
       timezone: "Asia/Kolkata",
     });
   });

@@ -8,6 +8,6 @@ read_when:
 # OWNER.md - Business Owner
 
 - **Name:** Vikram Sharma
-- **Phone:** +91-9876543210
-- **Language:** Hindi-English (Hinglish)
+- **Phone:**
+- **Language:** Multilingual
 - **Timezone:** Asia/Kolkata

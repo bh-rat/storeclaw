@@ -46,7 +46,6 @@ If you treat this workspace as the agent's "memory", make it a git repo (ideally
 ## Progressive learning
 
 - Update BUSINESS.md, OWNER.md, TEAM.md as you learn new facts
-- Create PRODUCTS.md, CONTACTS.md etc. when topics grow complex enough
 
 ## Customize
 

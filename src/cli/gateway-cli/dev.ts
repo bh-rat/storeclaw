@@ -84,7 +84,7 @@ async function ensureDevWorkspace(dir: string) {
     ),
     loadDevTemplate(
       "OWNER.dev.md",
-      `# OWNER.md - Business Owner\n\n- Name: Vikram Sharma\n- Phone: +91-9876543210\n- Language: Hindi-English (Hinglish)\n- Timezone: Asia/Kolkata\n`,
+      `# OWNER.md - Business Owner\n\n- Name: Vikram Sharma\n- Phone:\n- Language: Multilingual\n- Timezone: Asia/Kolkata\n`,
     ),
   ]);
 

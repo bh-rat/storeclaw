@@ -11,6 +11,6 @@ read_when:
 _People who work in this business. Add entries as the owner introduces them._
 
 <!-- Example:
-- **Rahul** — handles billing, speaks Hindi
-- **Priya** — manages inventory, speaks English
+- **Rahul** — handles billing
+- **Priya** — manages inventory
 -->
