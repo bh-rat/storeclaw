@@ -5,9 +5,12 @@ import { makeTempWorkspace, writeWorkspaceFile } from "../test-helpers/workspace
 import {
   DEFAULT_AGENTS_FILENAME,
   DEFAULT_BOOTSTRAP_FILENAME,
+  DEFAULT_BUSINESS_FILENAME,
   DEFAULT_IDENTITY_FILENAME,
   DEFAULT_MEMORY_ALT_FILENAME,
   DEFAULT_MEMORY_FILENAME,
+  DEFAULT_OWNER_FILENAME,
+  DEFAULT_TEAM_FILENAME,
   DEFAULT_TOOLS_FILENAME,
   DEFAULT_USER_FILENAME,
   ensureAgentWorkspace,
@@ -140,5 +143,85 @@ describe("loadWorkspaceBootstrapFiles", () => {
     );
 
     expect(memoryEntries).toHaveLength(0);
+  });
+
+  it("includes BUSINESS.md, OWNER.md, TEAM.md entries", async () => {
+    const tempDir = await makeTempWorkspace("storeclaw-workspace-");
+    await writeWorkspaceFile({ dir: tempDir, name: "BUSINESS.md", content: "biz" });
+    await writeWorkspaceFile({ dir: tempDir, name: "OWNER.md", content: "owner" });
+    await writeWorkspaceFile({ dir: tempDir, name: "TEAM.md", content: "team" });
+
+    const files = await loadWorkspaceBootstrapFiles(tempDir);
+    const businessEntry = files.find((f) => f.name === DEFAULT_BUSINESS_FILENAME);
+    const ownerEntry = files.find((f) => f.name === DEFAULT_OWNER_FILENAME);
+    const teamEntry = files.find((f) => f.name === DEFAULT_TEAM_FILENAME);
+
+    expect(businessEntry?.missing).toBe(false);
+    expect(businessEntry?.content).toBe("biz");
+    expect(ownerEntry?.missing).toBe(false);
+    expect(ownerEntry?.content).toBe("owner");
+    expect(teamEntry?.missing).toBe(false);
+    expect(teamEntry?.content).toBe("team");
+  });
+
+  it("marks missing business files as missing", async () => {
+    const tempDir = await makeTempWorkspace("storeclaw-workspace-");
+
+    const files = await loadWorkspaceBootstrapFiles(tempDir);
+    const businessEntry = files.find((f) => f.name === DEFAULT_BUSINESS_FILENAME);
+    const ownerEntry = files.find((f) => f.name === DEFAULT_OWNER_FILENAME);
+    const teamEntry = files.find((f) => f.name === DEFAULT_TEAM_FILENAME);
+
+    expect(businessEntry?.missing).toBe(true);
+    expect(ownerEntry?.missing).toBe(true);
+    expect(teamEntry?.missing).toBe(true);
+  });
+});
+
+describe("ensureAgentWorkspace business files", () => {
+  it("seeds BUSINESS.md, OWNER.md, TEAM.md for brand new workspaces", async () => {
+    const tempDir = await makeTempWorkspace("storeclaw-workspace-");
+
+    const result = await ensureAgentWorkspace({ dir: tempDir, ensureBootstrapFiles: true });
+
+    expect(result.businessPath).toBeDefined();
+    expect(result.ownerPath).toBeDefined();
+    expect(result.teamPath).toBeDefined();
+    await expect(fs.access(result.businessPath!)).resolves.toBeUndefined();
+    await expect(fs.access(result.ownerPath!)).resolves.toBeUndefined();
+    await expect(fs.access(result.teamPath!)).resolves.toBeUndefined();
+  });
+
+  it("does not overwrite existing BUSINESS.md", async () => {
+    const tempDir = await makeTempWorkspace("storeclaw-workspace-");
+    await writeWorkspaceFile({
+      dir: tempDir,
+      name: "BUSINESS.md",
+      content: "custom business",
+    });
+
+    await ensureAgentWorkspace({ dir: tempDir, ensureBootstrapFiles: true });
+
+    const content = await fs.readFile(path.join(tempDir, "BUSINESS.md"), "utf-8");
+    expect(content).toBe("custom business");
+  });
+
+  it("detects legacy business onboarding as complete when BUSINESS.md diverges", async () => {
+    const tempDir = await makeTempWorkspace("storeclaw-workspace-");
+    // Pre-write a customized BUSINESS.md but leave IDENTITY.md and USER.md as templates
+    await writeWorkspaceFile({
+      dir: tempDir,
+      name: "BUSINESS.md",
+      content: "# My Custom Business\n\n- **Name:** My Shop\n",
+    });
+
+    await ensureAgentWorkspace({ dir: tempDir, ensureBootstrapFiles: true });
+
+    const state = await readOnboardingState(tempDir);
+    expect(state.onboardingCompletedAt).toMatch(/\d{4}-\d{2}-\d{2}T/);
+    // BOOTSTRAP.md should not be created for already-onboarded workspaces
+    await expect(fs.access(path.join(tempDir, DEFAULT_BOOTSTRAP_FILENAME))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
   });
 });

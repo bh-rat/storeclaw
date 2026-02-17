@@ -9,4 +9,12 @@ read_when:
 
 # Keep this file empty (or with only comments) to skip heartbeat API calls.
 
-# Add tasks below when you want the agent to check something periodically.
+# StoreClaw will check this file on each heartbeat poll.
+
+# When the business is set up, you can add periodic checks here:
+
+# - Check for pending orders or reminders
+
+# - Review daily memory files
+
+# - Update MEMORY.md with curated learnings
