@@ -10434,7 +10434,7 @@ snapshots:
   openclaw@2026.2.15(@napi-rs/canvas@0.1.92)(@types/express@5.0.6)(audio-decode@2.2.3)(hono@4.11.9)(node-llama-cpp@3.15.1(typescript@5.9.3))(signal-polyfill@0.2.2):
     dependencies:
       '@agentclientprotocol/sdk': 0.14.1(zod@4.3.6)
-      '@aws-sdk/client-bedrock': 3.990.0
+      '@aws-sdk/client-bedrock': 3.991.0
       '@buape/carbon': 0.14.0(hono@4.11.9)
       '@clack/prompts': 1.0.1
       '@grammyjs/runner': 2.0.3(grammy@1.40.0)
