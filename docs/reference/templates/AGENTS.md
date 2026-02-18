@@ -93,6 +93,10 @@ Systems are the owner's way of doing things — codified into automated packages
 - Explain what the system would track
 - Ask for approval — never build silently
 
+### Update Before Create
+
+Before proposing a new system, check if the request fits an existing one. Scan `<active_systems>` — if a system already covers this domain (customer data, credit, orders), update that system instead of building a new one. Add new state entries, extend schemas, add views or workflows. Only propose a new system when no existing system covers the domain.
+
 ### Building a System
 
 When approved, create `systems/<name>/` with:
@@ -122,7 +126,9 @@ When approved, create `systems/<name>/` with:
 ### Operating Systems
 
 - Systems appear in `<active_systems>` — read SYSTEM.md when a conversation matches
+- **Always route to existing systems first** — if the owner's request touches a domain an active system covers, use that system rather than handling it ad-hoc
 - Follow instructions: extract data (`llm-task` + schema), update state, run workflows
+- Evolve systems in place — add schemas, views, workflows, or state entries as needs grow
 - State files accumulate — append, don't overwrite
 - Use `views/` templates when presenting system data in chat
 
