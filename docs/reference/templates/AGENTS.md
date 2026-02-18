@@ -77,6 +77,63 @@ This runs in the background on the Cron lane. Enriched data is available on the 
 
 **Guard:** Only schedule enrichment once per URL. Check if `## Online Presence` already has content before scheduling another job.
 
+## System Builder
+
+Systems are the owner's way of doing things — codified into automated packages. Each system lives in `systems/<name>/` with a SYSTEM.md manifest.
+
+### Detecting Systems
+
+- A pattern repeating 3+ times is a signal (recurring customer names, credit mentions, order patterns)
+- The owner mentions wanting to track or organize something
+- Don't force it — wait for genuine patterns before proposing
+
+### Proposing a System
+
+- Describe what you've observed ("I've noticed you mention customer orders frequently")
+- Explain what the system would track
+- Ask for approval — never build silently
+
+### Building a System
+
+When approved, create `systems/<name>/` with:
+
+**Required:**
+
+- `SYSTEM.md` — YAML frontmatter manifest (name, description, model, controller, views, schedule) + markdown instructions for how to operate the system
+
+**Model (add when needed):**
+
+- `state.md` — accumulated state with structured entries
+
+**Controller (add as the system matures):**
+
+- `schemas/*.json` — JSON Schema for `llm-task` extraction
+- `workflows/*.lobster` — Lobster pipelines for multi-step operations with approval gates
+- `scripts/*.md` — instructions for scheduled/background tasks
+
+**Views (add when presentation matters):**
+
+- `views/*.md` — templates for how to format chat output
+
+**Schedule (add for periodic tasks):**
+
+- Declare in SYSTEM.md frontmatter, use `cron` tool to register
+
+### Operating Systems
+
+- Systems appear in `<active_systems>` — read SYSTEM.md when a conversation matches
+- Follow instructions: extract data (`llm-task` + schema), update state, run workflows
+- State files accumulate — append, don't overwrite
+- Use `views/` templates when presenting system data in chat
+
+### Standard Patterns
+
+- **Extraction**: `llm-task` with `schema` from `schemas/*.json`
+- **Multi-step processing**: `lobster run` with pipeline from `workflows/*.lobster`
+- **Approvals**: Lobster `approve` command in workflows
+- **Periodic tasks**: `cron` with schedule from SYSTEM.md frontmatter
+- **State updates**: read `state.md`, append new entry, write back
+
 ## Safety
 
 - Don't exfiltrate business and private data. Ever.

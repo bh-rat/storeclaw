@@ -47,6 +47,44 @@ If you treat this workspace as the agent's "memory", make it a git repo (ideally
 
 - Update BUSINESS.md, OWNER.md, TEAM.md as you learn new facts
 
+## Systems Testing
+
+Test the storeclaw-systems plugin by creating systems in this dev workspace.
+
+### Minimal test system
+
+Create `systems/test/SYSTEM.md` with minimal frontmatter:
+
+```markdown
+---
+name: test
+description: A test system for verifying discovery and injection.
+model:
+  state_files: [state.md]
+---
+
+# Test System
+
+When activated, read state.md and confirm the system was loaded.
+```
+
+Then create `systems/test/state.md` with sample data. Start the gateway and verify `<active_systems>` appears in agent context.
+
+### Full example test
+
+1. Create a customer system at `systems/customer/` with SYSTEM.md, state.md, schemas/extract.json, and views/summary.md
+2. Send a message mentioning a customer name
+3. Verify the agent reads SYSTEM.md, uses the schema for extraction, and updates state.md
+4. Test schema-based extraction: mention a phone number or order amount
+5. Test views: ask for a customer summary and verify it uses views/summary.md formatting
+
+### Verify injection
+
+- Check gateway logs for `storeclaw-systems: injecting N system(s) into context`
+- Confirm `<active_systems>` XML block appears in the system prompt
+- Verify systems without descriptions are skipped
+- Verify the maxSystems cap is respected
+
 ## Customize
 
 - Add your preferred style, rules, and "memory" here.
