@@ -47,6 +47,52 @@ If you treat this workspace as the agent's "memory", make it a git repo (ideally
 
 - Update BUSINESS.md, OWNER.md, TEAM.md as you learn new facts
 
+## Systems Testing
+
+Test the storeclaw-systems plugin by creating systems in this dev workspace.
+
+### Minimal test system
+
+Create `systems/test/SYSTEM.md` with minimal frontmatter:
+
+```markdown
+---
+name: test
+description: A test system for verifying discovery and injection.
+model:
+  store: test.sqlite
+  rules:
+    - id: test-rule
+      match: "test data, sample input"
+      source: all
+      processor: schemas/extract.json
+---
+
+# Test System
+
+When activated, use memory_search with the rule match pattern to find relevant data. Use system_model tool to track source references and processing state.
+```
+
+Start the gateway and verify `<active_systems>` appears in agent context with `<model_status>` information.
+
+### Full example test
+
+1. Create a customer system at `systems/customer/` with SYSTEM.md (including model.store and model.rules), schemas/extract-contact.json, and views/summary.md
+2. Send a message mentioning a customer name
+3. Verify the agent reads SYSTEM.md, uses the schema for extraction via `llm-task`
+4. Verify `system_model` tool is available — test `status`, `add_ref`, `process`, and `query` actions
+5. Verify `processing.jsonl` audit log gets written
+6. Test views: ask for a customer summary and verify it uses views/summary.md formatting
+7. Verify `<model_status>`, `<controller_hint>`, `<extraction_hint>`, and `<view_hint>` appear in the injected context
+
+### Verify injection
+
+- Check gateway logs for `storeclaw-systems: injecting N system(s) into context`
+- Confirm `<active_systems>` XML block appears in the system prompt
+- Verify systems without descriptions are skipped
+- Verify the maxSystems cap is respected
+- Verify `<model_status>` shows pending/processed counts for systems with SQLite DBs
+
 ## Customize
 
 - Add your preferred style, rules, and "memory" here.
