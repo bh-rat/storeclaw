@@ -1,5 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { formatSystemsForPrompt } from "./format.js";
+import type { SystemModelInfo } from "./format.js";
 import type { SystemEntry } from "./types.js";
 
 function makeEntry(overrides: Partial<SystemEntry> = {}): SystemEntry {
@@ -89,5 +90,123 @@ describe("formatSystemsForPrompt", () => {
     const entry = makeEntry({ capabilities: [] });
     const result = formatSystemsForPrompt([entry], 20);
     expect(result).toContain("<capabilities>model</capabilities>");
+  });
+
+  test("includes model_status when provided", () => {
+    const entry = makeEntry({ name: "customer" });
+    const modelInfos: SystemModelInfo[] = [
+      {
+        name: "customer",
+        status: {
+          pending: 3,
+          processed: 10,
+          failed: 1,
+          needs_reprocess: 2,
+          total_refs: 16,
+        },
+      },
+    ];
+
+    const result = formatSystemsForPrompt([entry], 20, modelInfos);
+    expect(result).toContain('<model_status refs="16"');
+    expect(result).toContain('pending="3"');
+    expect(result).toContain('processed="10"');
+    expect(result).toContain('failed="1"');
+    expect(result).toContain('needs_reprocess="2"');
+  });
+
+  test("includes model_attention when there are pending items", () => {
+    const entry = makeEntry({ name: "customer" });
+    const modelInfos: SystemModelInfo[] = [
+      {
+        name: "customer",
+        status: {
+          pending: 2,
+          processed: 5,
+          failed: 0,
+          needs_reprocess: 1,
+          total_refs: 8,
+        },
+      },
+    ];
+
+    const result = formatSystemsForPrompt([entry], 20, modelInfos);
+    expect(result).toContain("<model_attention>");
+    expect(result).toContain("3 source ref(s) need processing");
+  });
+
+  test("does not include model_attention when nothing pending", () => {
+    const entry = makeEntry({ name: "customer" });
+    const modelInfos: SystemModelInfo[] = [
+      {
+        name: "customer",
+        status: {
+          pending: 0,
+          processed: 5,
+          failed: 0,
+          needs_reprocess: 0,
+          total_refs: 5,
+        },
+      },
+    ];
+
+    const result = formatSystemsForPrompt([entry], 20, modelInfos);
+    expect(result).not.toContain("<model_attention>");
+  });
+
+  test("includes controller_hint for workflows", () => {
+    const entry = makeEntry({
+      manifest: {
+        name: "customer",
+        description: "Track customers.",
+        controller: {
+          workflows: ["workflows/update.lobster"],
+        },
+      },
+    });
+
+    const result = formatSystemsForPrompt([entry], 20);
+    expect(result).toContain("<controller_hint>");
+    expect(result).toContain("lobster run");
+    expect(result).toContain("workflows/update.lobster");
+  });
+
+  test("includes extraction_hint for schemas", () => {
+    const entry = makeEntry({
+      manifest: {
+        name: "customer",
+        description: "Track customers.",
+        controller: {
+          schemas: ["schemas/extract.json"],
+        },
+      },
+    });
+
+    const result = formatSystemsForPrompt([entry], 20);
+    expect(result).toContain("<extraction_hint>");
+    expect(result).toContain("llm-task");
+    expect(result).toContain("schemas/extract.json");
+  });
+
+  test("includes view_hint for views", () => {
+    const entry = makeEntry({
+      manifest: {
+        name: "customer",
+        description: "Track customers.",
+        views: ["views/summary.md"],
+      },
+    });
+
+    const result = formatSystemsForPrompt([entry], 20);
+    expect(result).toContain("<view_hint>");
+    expect(result).toContain("views/summary.md");
+  });
+
+  test("does not include hints when no controller/views", () => {
+    const entry = makeEntry();
+    const result = formatSystemsForPrompt([entry], 20);
+    expect(result).not.toContain("<controller_hint>");
+    expect(result).not.toContain("<extraction_hint>");
+    expect(result).not.toContain("<view_hint>");
   });
 });

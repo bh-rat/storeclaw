@@ -60,23 +60,30 @@ Create `systems/test/SYSTEM.md` with minimal frontmatter:
 name: test
 description: A test system for verifying discovery and injection.
 model:
-  state_files: [state.md]
+  store: test.sqlite
+  rules:
+    - id: test-rule
+      match: "test data, sample input"
+      source: all
+      processor: schemas/extract.json
 ---
 
 # Test System
 
-When activated, read state.md and confirm the system was loaded.
+When activated, use memory_search with the rule match pattern to find relevant data. Use system_model tool to track source references and processing state.
 ```
 
-Then create `systems/test/state.md` with sample data. Start the gateway and verify `<active_systems>` appears in agent context.
+Start the gateway and verify `<active_systems>` appears in agent context with `<model_status>` information.
 
 ### Full example test
 
-1. Create a customer system at `systems/customer/` with SYSTEM.md, state.md, schemas/extract.json, and views/summary.md
+1. Create a customer system at `systems/customer/` with SYSTEM.md (including model.store and model.rules), schemas/extract-contact.json, and views/summary.md
 2. Send a message mentioning a customer name
-3. Verify the agent reads SYSTEM.md, uses the schema for extraction, and updates state.md
-4. Test schema-based extraction: mention a phone number or order amount
-5. Test views: ask for a customer summary and verify it uses views/summary.md formatting
+3. Verify the agent reads SYSTEM.md, uses the schema for extraction via `llm-task`
+4. Verify `system_model` tool is available — test `status`, `add_ref`, `process`, and `query` actions
+5. Verify `processing.jsonl` audit log gets written
+6. Test views: ask for a customer summary and verify it uses views/summary.md formatting
+7. Verify `<model_status>`, `<controller_hint>`, `<extraction_hint>`, and `<view_hint>` appear in the injected context
 
 ### Verify injection
 
@@ -84,6 +91,7 @@ Then create `systems/test/state.md` with sample data. Start the gateway and veri
 - Confirm `<active_systems>` XML block appears in the system prompt
 - Verify systems without descriptions are skipped
 - Verify the maxSystems cap is respected
+- Verify `<model_status>` shows pending/processed counts for systems with SQLite DBs
 
 ## Customize
 

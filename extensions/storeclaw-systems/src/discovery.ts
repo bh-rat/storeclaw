@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { join } from "node:path";
-import type { SystemEntry, SystemManifest } from "./types.js";
+import type { ModelRule, SystemEntry, SystemManifest } from "./types.js";
 
 /**
  * Parse YAML frontmatter from a markdown file's content.
@@ -17,51 +17,80 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
   const body = match[2];
   const data: Record<string, unknown> = {};
 
-  // Simple line-by-line YAML parser for flat keys and arrays
+  // Simple line-by-line YAML parser for flat keys, nested objects, and arrays
   let currentKey = "";
   let currentObj: Record<string, unknown> | null = null;
   let currentArray: unknown[] | null = null;
+  // Track the current array item object for multi-line array items (- id: foo \n match: bar)
+  let currentArrayItem: Record<string, unknown> | null = null;
 
   for (const rawLine of yamlBlock.split("\n")) {
     const line = rawLine.trimEnd();
     if (!line || line.startsWith("#")) continue;
 
-    // Array item under a key
-    const arrayItemMatch = line.match(/^\s+-\s+(.*)/);
-    if (arrayItemMatch && !currentArray && currentKey) {
-      // First array item under a top-level key — convert from object to array
-      currentArray = [];
-      currentObj = null;
-      data[currentKey] = currentArray;
-    }
-    if (arrayItemMatch && currentArray) {
-      const val = arrayItemMatch[1].trim();
-      // Check for inline object { name: ..., cron: ..., task: ... }
-      if (val.startsWith("{") && val.endsWith("}")) {
-        const inner = val.slice(1, -1);
-        const obj: Record<string, string> = {};
-        for (const pair of inner.split(",")) {
-          const [k, ...vParts] = pair.split(":");
-          if (k && vParts.length > 0) {
-            obj[k.trim()] = vParts
-              .join(":")
-              .trim()
-              .replace(/^["']|["']$/g, "");
+    // Array item: "  - value" or "    - id: foo"
+    const arrayItemMatch = line.match(/^(\s+)-\s+(.*)/);
+    if (arrayItemMatch) {
+      // If we don't have an array yet under the current key, start one
+      if (!currentArray && currentKey) {
+        currentArray = [];
+        currentObj = null;
+        currentArrayItem = null;
+        data[currentKey] = currentArray;
+      } else if (!currentArray && currentObj) {
+        // Nested array under an object key — already handled via kvMatch empty value
+      }
+
+      if (currentArray) {
+        const val = arrayItemMatch[2].trim();
+        // Inline object { name: ..., cron: ..., task: ... }
+        if (val.startsWith("{") && val.endsWith("}")) {
+          const inner = val.slice(1, -1);
+          const obj: Record<string, string> = {};
+          for (const pair of inner.split(",")) {
+            const [k, ...vParts] = pair.split(":");
+            if (k && vParts.length > 0) {
+              obj[k.trim()] = vParts
+                .join(":")
+                .trim()
+                .replace(/^["']|["']$/g, "");
+            }
+          }
+          currentArrayItem = null;
+          currentArray.push(obj);
+        } else {
+          // Check if this is "- key: value" (multi-line object item)
+          const itemKvMatch = val.match(/^(\w[\w_-]*):\s*(.*)/);
+          if (itemKvMatch) {
+            const obj: Record<string, string> = {};
+            obj[itemKvMatch[1]] = itemKvMatch[2].trim().replace(/^["']|["']$/g, "");
+            currentArrayItem = obj;
+            currentArray.push(obj);
+          } else {
+            currentArrayItem = null;
+            currentArray.push(val.replace(/^["']|["']$/g, ""));
           }
         }
-        currentArray.push(obj);
-      } else {
-        currentArray.push(val.replace(/^["']|["']$/g, ""));
+        continue;
       }
-      continue;
     }
 
     // Top-level or nested key: value
-    const kvMatch = line.match(/^(\s*)(\w[\w_]*):\s*(.*)/);
+    const kvMatch = line.match(/^(\s*)(\w[\w_-]*):\s*(.*)/);
     if (kvMatch) {
       const indent = kvMatch[1].length;
       const key = kvMatch[2];
       let value: string | unknown = kvMatch[3].trim();
+
+      // Continuation of a multi-line array item object (e.g. "    match: ..." after "  - id: ...")
+      if (indent > 0 && currentArrayItem && currentArray) {
+        if (typeof value === "string" && value) {
+          currentArrayItem[key] = value.replace(/^["']|["']$/g, "");
+        } else {
+          currentArrayItem[key] = value;
+        }
+        continue;
+      }
 
       // Inline array [a, b, c]
       if (typeof value === "string" && value.startsWith("[") && value.endsWith("]")) {
@@ -77,6 +106,7 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
           currentKey = key;
           currentObj = null;
           currentArray = null;
+          currentArrayItem = null;
         }
         continue;
       }
@@ -87,9 +117,11 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
           currentKey = key;
           currentObj = {};
           currentArray = null;
+          currentArrayItem = null;
           data[key] = currentObj;
         } else if (currentObj) {
           currentArray = [];
+          currentArrayItem = null;
           currentObj[key] = currentArray;
         }
         continue;
@@ -103,11 +135,13 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
       if (indent > 0 && currentObj && currentKey) {
         currentObj[key] = value;
         currentArray = null;
+        currentArrayItem = null;
       } else {
         data[key] = value;
         currentKey = key;
         currentObj = null;
         currentArray = null;
+        currentArrayItem = null;
       }
     }
   }
@@ -115,9 +149,38 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
   return { data, body };
 }
 
+function parseModelRules(raw: unknown): ModelRule[] {
+  if (!Array.isArray(raw)) return [];
+  const rules: ModelRule[] = [];
+  for (const item of raw) {
+    if (typeof item !== "object" || !item) continue;
+    const obj = item as Record<string, unknown>;
+    const id = typeof obj.id === "string" ? obj.id : undefined;
+    const match = typeof obj.match === "string" ? obj.match : undefined;
+    const processor = typeof obj.processor === "string" ? obj.processor : undefined;
+    if (!id || !match || !processor) continue;
+    const source = typeof obj.source === "string" ? obj.source : undefined;
+    const priority = typeof obj.priority === "number" ? obj.priority : undefined;
+    rules.push({
+      id,
+      match,
+      processor,
+      ...(source && ["memory", "sessions", "lancedb", "all"].includes(source)
+        ? { source: source as ModelRule["source"] }
+        : {}),
+      ...(priority !== undefined ? { priority } : {}),
+    });
+  }
+  return rules;
+}
+
 function computeCapabilities(manifest: SystemManifest): string[] {
   const caps: string[] = [];
-  if (manifest.model?.state_files && manifest.model.state_files.length > 0) caps.push("model");
+  const hasModel =
+    manifest.model?.store ||
+    (manifest.model?.rules && manifest.model.rules.length > 0) ||
+    (manifest.model?.state_files && manifest.model.state_files.length > 0);
+  if (hasModel) caps.push("model");
   if (manifest.controller?.schemas && manifest.controller.schemas.length > 0) caps.push("schemas");
   if (manifest.controller?.workflows && manifest.controller.workflows.length > 0)
     caps.push("workflows");
@@ -181,11 +244,17 @@ export function discoverSystems(workspaceDir: string): SystemEntry[] {
     };
 
     // Parse model
+    let modelDbPath: string | undefined;
     if (data.model && typeof data.model === "object") {
       const model = data.model as Record<string, unknown>;
+      const store = typeof model.store === "string" ? model.store : undefined;
+      const rules = parseModelRules(model.rules);
       manifest.model = {
+        store: store ?? `${name}.sqlite`,
+        rules: rules.length > 0 ? rules : undefined,
         state_files: Array.isArray(model.state_files) ? (model.state_files as string[]) : undefined,
       };
+      modelDbPath = join(systemDir, manifest.model.store);
     }
 
     // Parse controller
@@ -216,6 +285,7 @@ export function discoverSystems(workspaceDir: string): SystemEntry[] {
       manifest,
       systemMdPath,
       capabilities: computeCapabilities(manifest),
+      modelDbPath,
     });
   }
 

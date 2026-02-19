@@ -95,7 +95,7 @@ Systems are the owner's way of doing things — codified into automated packages
 
 ### Update Before Create
 
-Before proposing a new system, check if the request fits an existing one. Scan `<active_systems>` — if a system already covers this domain (customer data, credit, orders), update that system instead of building a new one. Add new state entries, extend schemas, add views or workflows. Only propose a new system when no existing system covers the domain.
+Before proposing a new system, check if the request fits an existing one. Scan `<active_systems>` — if a system already covers this domain (customer data, credit, orders), update that system instead of building a new one. Add new rules, extend schemas, add views or workflows. Only propose a new system when no existing system covers the domain.
 
 ### Building a System
 
@@ -105,40 +105,55 @@ When approved, create `systems/<name>/` with:
 
 - `SYSTEM.md` — YAML frontmatter manifest (name, description, model, controller, views, schedule) + markdown instructions for how to operate the system
 
-**Model (add when needed):**
+**Model (rule engine — references memory, never copies source data):**
 
-- `state.md` — accumulated state with structured entries
+- The model is a SQLite database (`<name>.sqlite`) that stores **references** to source data in agent memory and tracks processing state
+- Rules are defined in SYSTEM.md frontmatter under `model.rules` — each rule has `id`, `match` (semantic pattern), `source` (memory/sessions/lancedb/all), and `processor` (schema path)
+- Use `memory_search(rule.match)` to find relevant source data in agent memory
+- Use `system_model` tool to check if data is already referenced, add new refs, and record processing results
+- Never duplicate source data — the agent's memory (SQLite chunks + session transcripts) is the single source of truth
+- `processing.jsonl` alongside the `.sqlite` is a human-readable audit log
 
 **Controller (add as the system matures):**
 
-- `schemas/*.json` — JSON Schema for `llm-task` extraction
-- `workflows/*.lobster` — Lobster pipelines for multi-step operations with approval gates
-- `scripts/*.md` — instructions for scheduled/background tasks
+- `schemas/*.json` — JSON Schema for `llm-task` extraction. Call `llm-task` with `schema` from these files to extract structured data.
+- `workflows/*.lobster` — Lobster pipelines for multi-step operations with approval gates. Run workflows with `lobster run workspace/systems/<name>/workflows/<file>.lobster`.
+- `scripts/*.md` — instructions for scheduled/background tasks. These are instructions, not executables — the agent reads them and follows the steps.
 
 **Views (add when presentation matters):**
 
-- `views/*.md` — templates for how to format chat output
+- `views/*.md` — templates for how to format chat output. Read the view template, query the model for data, and format the response following the template.
 
 **Schedule (add for periodic tasks):**
 
-- Declare in SYSTEM.md frontmatter, use `cron` tool to register
+- Declare in SYSTEM.md frontmatter, use `cron` tool to register. On first activation, register all schedules. Scripts are instructions, not executables.
 
-### Operating Systems
+### Operating a System
+
+Follow this flow when a system applies to a conversation:
+
+1. **LOAD** — Read SYSTEM.md for instructions and rules
+2. **EXTRACT** — Use `llm-task` with `schema` from `schemas/*.json` to parse structured data from the input
+3. **REFERENCE** — Use `system_model` tool with `add_ref` to record a source reference (pointing to agent memory, never copying data)
+4. **EXECUTE** — Run `lobster` workflows if applicable
+5. **PERSIST** — Record processing result via `system_model` tool with `process` action
+6. **VIEW** — Read view template, format response
+
+### Routing
 
 - Systems appear in `<active_systems>` — read SYSTEM.md when a conversation matches
 - **Always route to existing systems first** — if the owner's request touches a domain an active system covers, use that system rather than handling it ad-hoc
-- Follow instructions: extract data (`llm-task` + schema), update state, run workflows
-- Evolve systems in place — add schemas, views, workflows, or state entries as needs grow
-- State files accumulate — append, don't overwrite
-- Use `views/` templates when presenting system data in chat
+- Check `<model_status>` for pending work — process unhandled source refs
+- When source data doesn't match any rule, log as unmatched and propose a new rule to the owner
+- Evolve systems in place — add rules, schemas, views, workflows as needs grow
 
 ### Standard Patterns
 
-- **Extraction**: `llm-task` with `schema` from `schemas/*.json`
-- **Multi-step processing**: `lobster run` with pipeline from `workflows/*.lobster`
-- **Approvals**: Lobster `approve` command in workflows
-- **Periodic tasks**: `cron` with schedule from SYSTEM.md frontmatter
-- **State updates**: read `state.md`, append new entry, write back
+- **Extraction**: `llm-task` with `schema` from `schemas/*.json` to extract structured data
+- **Lobster wiring**: `lobster run workspace/systems/<name>/workflows/<file>.lobster` for multi-step workflows
+- **View rendering**: Read view template at `views/*.md`, query model for data, format response following the template
+- **Cron registration**: On first activation, register schedules with `cron` tool. Scripts in `scripts/*.md` are instructions — read and follow them.
+- **Model updates**: Use `system_model` tool — `status` to check state, `add_ref` to reference source data, `process` to record results, `query` to retrieve data
 
 ## Safety
 
