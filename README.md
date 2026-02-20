@@ -11,8 +11,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
 </p>
 
-**StoreClaw** is a business assistant for micro enterprises, completely built on [OpenClaw](https://github.com/openclaw/openclaw). It joins a business's existing WhatsApp conversations and gradually builds an understanding of how the business works — customers, orders, inventory, credit — without asking the owner to change anything about how they operate.
-
 ---
 
 ## Why
