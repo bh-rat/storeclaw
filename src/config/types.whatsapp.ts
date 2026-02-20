@@ -16,6 +16,8 @@ export type WhatsAppActionConfig = {
 
 export type WhatsAppGroupConfig = {
   requireMention?: boolean;
+  /** When "silent", media messages are stored in context without replying. When true, media bypasses mention and bot replies. */
+  mediaBypassMention?: boolean | "silent";
   tools?: GroupToolPolicyConfig;
   toolsBySender?: GroupToolPolicyBySenderConfig;
 };

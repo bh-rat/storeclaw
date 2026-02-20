@@ -258,6 +258,144 @@ describe("applyGroupGating", () => {
     expect(result.shouldProcess).toBe(true);
   });
 
+  it("silently stores media message with mediaBypassMention: 'silent'", () => {
+    const cfg = makeConfig({
+      channels: {
+        whatsapp: {
+          groupPolicy: "open",
+          groups: { "*": { requireMention: true, mediaBypassMention: "silent" } },
+        },
+      },
+    });
+
+    const { result, groupHistories } = runGroupGating({
+      cfg,
+      msg: createGroupMessage({
+        id: "img1",
+        body: "",
+        mediaPath: "/tmp/photo.jpg",
+        mediaType: "image",
+        senderE164: "+111",
+        senderName: "Alice",
+      }),
+    });
+
+    expect(result.shouldProcess).toBe(false);
+    const history = groupHistories.get("whatsapp:default:group:123@g.us");
+    expect(history?.length).toBe(1);
+    expect((history![0] as { body: string }).body).toBe("[media: image /tmp/photo.jpg]");
+  });
+
+  it("stores media with caption and reference when mediaBypassMention: 'silent'", () => {
+    const cfg = makeConfig({
+      channels: {
+        whatsapp: {
+          groupPolicy: "open",
+          groups: { "*": { requireMention: true, mediaBypassMention: "silent" } },
+        },
+      },
+    });
+
+    const { result, groupHistories } = runGroupGating({
+      cfg,
+      msg: createGroupMessage({
+        id: "img2",
+        body: "check this out",
+        mediaPath: "/tmp/doc.pdf",
+        mediaType: "document",
+        senderE164: "+111",
+        senderName: "Alice",
+      }),
+    });
+
+    expect(result.shouldProcess).toBe(false);
+    const history = groupHistories.get("whatsapp:default:group:123@g.us");
+    expect(history?.length).toBe(1);
+    expect((history![0] as { body: string }).body).toBe(
+      "check this out [media: document /tmp/doc.pdf]",
+    );
+  });
+
+  it("text-only message with mediaBypassMention: 'silent' is unchanged (no reply)", () => {
+    const cfg = makeConfig({
+      channels: {
+        whatsapp: {
+          groupPolicy: "open",
+          groups: { "*": { requireMention: true, mediaBypassMention: "silent" } },
+        },
+      },
+    });
+
+    const { result, groupHistories } = runGroupGating({
+      cfg,
+      msg: createGroupMessage({
+        id: "txt1",
+        body: "just text",
+        senderE164: "+111",
+        senderName: "Alice",
+      }),
+    });
+
+    expect(result.shouldProcess).toBe(false);
+    const history = groupHistories.get("whatsapp:default:group:123@g.us");
+    expect(history?.length).toBe(1);
+    expect((history![0] as { body: string }).body).toBe("just text");
+  });
+
+  it("processes media message with mediaBypassMention: true (bypasses and replies)", () => {
+    const cfg = makeConfig({
+      channels: {
+        whatsapp: {
+          groupPolicy: "open",
+          groups: { "*": { requireMention: true, mediaBypassMention: true } },
+        },
+      },
+    });
+
+    const { result } = runGroupGating({
+      cfg,
+      msg: createGroupMessage({
+        id: "img3",
+        body: "",
+        mediaPath: "/tmp/photo.jpg",
+        mediaType: "image",
+        senderE164: "+111",
+        senderName: "Alice",
+      }),
+    });
+
+    expect(result.shouldProcess).toBe(true);
+  });
+
+  it("media message without mediaBypassMention falls through to default (no reply)", () => {
+    const cfg = makeConfig({
+      channels: {
+        whatsapp: {
+          groupPolicy: "open",
+          groups: { "*": { requireMention: true } },
+        },
+      },
+    });
+
+    const { result, groupHistories } = runGroupGating({
+      cfg,
+      msg: createGroupMessage({
+        id: "img4",
+        body: "",
+        mediaPath: "/tmp/photo.jpg",
+        mediaType: "image",
+        senderE164: "+111",
+        senderName: "Alice",
+      }),
+    });
+
+    expect(result.shouldProcess).toBe(false);
+    const history = groupHistories.get("whatsapp:default:group:123@g.us");
+    expect(history?.length).toBe(1);
+    // Without mediaBypassMention, body is stored as-is (empty)
+    expect((history![0] as { body: string }).body).toBe("");
+  });
+
   it("blocks group messages when whatsapp groups is set without a wildcard", () => {
     const cfg = makeConfig({
       channels: {
