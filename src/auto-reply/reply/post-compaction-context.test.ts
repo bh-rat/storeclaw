@@ -166,4 +166,46 @@ Never do Y.
     expect(result).toContain("Rule 2");
     expect(result).not.toContain("Other Section");
   });
+
+  it("extracts Every Session section", async () => {
+    const content = `# Agent Rules
+
+## Every Session
+
+Before doing anything else:
+1. Read SOUL.md
+2. Read USER.md
+3. Check systems/REGISTRY.md
+
+## Memory
+
+Memory stuff.
+`;
+    fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), content);
+    const result = await readPostCompactionContext(tmpDir);
+    expect(result).not.toBeNull();
+    expect(result).toContain("Every Session");
+    expect(result).toContain("SOUL.md");
+    expect(result).not.toContain("Memory stuff");
+  });
+
+  it("extracts Business Systems section", async () => {
+    const content = `# Agent Rules
+
+## Business Systems
+
+Use business_system_create to scaffold a new system.
+Use business_system_get to read a system.
+
+## Safety
+
+Be safe.
+`;
+    fs.writeFileSync(path.join(tmpDir, "AGENTS.md"), content);
+    const result = await readPostCompactionContext(tmpDir);
+    expect(result).not.toBeNull();
+    expect(result).toContain("Business Systems");
+    expect(result).toContain("business_system_create");
+    expect(result).not.toContain("Be safe");
+  });
 });

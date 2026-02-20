@@ -17,9 +17,14 @@ export async function readPostCompactionContext(workspaceDir: string): Promise<s
 
     const content = await fs.promises.readFile(agentsPath, "utf-8");
 
-    // Extract "## Session Startup" and "## Red Lines" sections
-    // Each section ends at the next "## " heading or end of file
-    const sections = extractSections(content, ["Session Startup", "Red Lines"]);
+    // Extract key sections that must survive context compaction.
+    // "Every Session" and "Session Startup" are alternate headings for the session checklist.
+    const sections = extractSections(content, [
+      "Every Session",
+      "Session Startup",
+      "Business Systems",
+      "Red Lines",
+    ]);
 
     if (sections.length === 0) {
       return null;

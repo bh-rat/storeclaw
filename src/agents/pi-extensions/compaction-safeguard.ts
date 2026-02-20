@@ -177,7 +177,12 @@ async function readWorkspaceContextForSummary(): Promise<string> {
     }
 
     const content = await fs.promises.readFile(agentsPath, "utf-8");
-    const sections = extractSections(content, ["Session Startup", "Red Lines"]);
+    const sections = extractSections(content, [
+      "Every Session",
+      "Session Startup",
+      "Business Systems",
+      "Red Lines",
+    ]);
 
     if (sections.length === 0) {
       return "";

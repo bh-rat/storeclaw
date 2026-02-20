@@ -32,6 +32,8 @@ export const DEFAULT_BUSINESS_FILENAME = "BUSINESS.md";
 export const DEFAULT_OWNER_FILENAME = "OWNER.md";
 export const DEFAULT_TEAM_FILENAME = "TEAM.md";
 export const DEFAULT_MEMORY_ALT_FILENAME = "memory.md";
+export const DEFAULT_SYSTEMS_REGISTRY_FILENAME = "REGISTRY.md";
+const SYSTEMS_REGISTRY_REL_PATH = "systems/REGISTRY.md";
 const WORKSPACE_STATE_DIRNAME = ".openclaw";
 const WORKSPACE_STATE_FILENAME = "workspace-state.json";
 const WORKSPACE_STATE_VERSION = 1;
@@ -93,7 +95,8 @@ export type WorkspaceBootstrapFileName =
   | typeof DEFAULT_MEMORY_ALT_FILENAME
   | typeof DEFAULT_BUSINESS_FILENAME
   | typeof DEFAULT_OWNER_FILENAME
-  | typeof DEFAULT_TEAM_FILENAME;
+  | typeof DEFAULT_TEAM_FILENAME
+  | typeof DEFAULT_SYSTEMS_REGISTRY_FILENAME;
 
 export type WorkspaceBootstrapFile = {
   name: WorkspaceBootstrapFileName;
@@ -122,6 +125,7 @@ const VALID_BOOTSTRAP_NAMES: ReadonlySet<string> = new Set([
   DEFAULT_BUSINESS_FILENAME,
   DEFAULT_OWNER_FILENAME,
   DEFAULT_TEAM_FILENAME,
+  DEFAULT_SYSTEMS_REGISTRY_FILENAME,
 ]);
 
 async function writeFileIfMissing(filePath: string, content: string): Promise<boolean> {
@@ -447,6 +451,18 @@ async function resolveMemoryBootstrapEntries(
   return deduped;
 }
 
+async function resolveSystemsRegistryEntry(
+  resolvedDir: string,
+): Promise<Array<{ name: WorkspaceBootstrapFileName; filePath: string }>> {
+  const filePath = path.join(resolvedDir, SYSTEMS_REGISTRY_REL_PATH);
+  try {
+    await fs.access(filePath);
+    return [{ name: DEFAULT_SYSTEMS_REGISTRY_FILENAME, filePath }];
+  } catch {
+    return [];
+  }
+}
+
 export async function loadWorkspaceBootstrapFiles(dir: string): Promise<WorkspaceBootstrapFile[]> {
   const resolvedDir = resolveUserPath(dir);
 
@@ -497,6 +513,7 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
   ];
 
   entries.push(...(await resolveMemoryBootstrapEntries(resolvedDir)));
+  entries.push(...(await resolveSystemsRegistryEntry(resolvedDir)));
 
   const result: WorkspaceBootstrapFile[] = [];
   for (const entry of entries) {

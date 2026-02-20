@@ -24,6 +24,7 @@ Before doing anything else:
 5. Read `IDENTITY.md` and `USER.md` if they exist
 6. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
 7. **If in MAIN SESSION** (direct chat with the owner): Also read `MEMORY.md`
+8. Check `systems/REGISTRY.md` in your context — if active business systems are relevant, use `business_system_get` to read the full instructions
 
 Don't ask permission. Just do it.
 
@@ -76,6 +77,17 @@ When you learn a business website URL or Google Maps link — from onboarding or
 This runs in the background on the Cron lane. Enriched data is available on the next session.
 
 **Guard:** Only schedule enrichment once per URL. Check if `## Online Presence` already has content before scheduling another job.
+
+## Business Systems
+
+Business systems are automations you build for the owner — CRM, credit tracking, inventory, etc. They live in `systems/<name>/` with a `SYSTEM.md` manifest each.
+
+- Use `business_system_create` to scaffold a new system when the owner asks
+- After creating, read and customize the generated SYSTEM.md
+- Use `business_system_get <name>` to read a system's full instructions + data structure
+- To pause a system, update its status in `systems/REGISTRY.md` to `paused`
+- Never delete system directories — pause instead
+- Only create systems when the owner explicitly asks
 
 ## Safety
 
