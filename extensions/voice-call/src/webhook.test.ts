@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { VoiceCallConfigSchema, type VoiceCallConfig } from "./config.js";
 import type { CallManager } from "./manager.js";
 import type { VoiceCallProvider } from "./providers/base.js";
 import type { CallRecord } from "./types.js";
-import { VoiceCallConfigSchema, type VoiceCallConfig } from "./config.js";
 import { VoiceCallWebhookServer } from "./webhook.js";
 
 const provider: VoiceCallProvider = {
   name: "mock",
   verifyWebhook: () => ({ ok: true }),
   parseWebhookEvent: () => ({ events: [] }),
-  initiateCall: async () => ({ providerCallId: "provider-call" }),
+  initiateCall: async () => ({ providerCallId: "provider-call", status: "initiated" }),
   hangupCall: async () => {},
   playTts: async () => {},
   startListening: async () => {},
@@ -75,6 +75,24 @@ describe("VoiceCallWebhookServer stale call reaper", () => {
       await server.start();
       await vi.advanceTimersByTimeAsync(30_000);
       expect(endCall).toHaveBeenCalledWith(call.callId);
+    } finally {
+      await server.stop();
+    }
+  });
+
+  it("skips calls that are younger than the threshold", async () => {
+    const now = new Date("2026-02-16T00:00:00Z");
+    vi.setSystemTime(now);
+
+    const call = createCall(now.getTime() - 10_000);
+    const { manager, endCall } = createManager([call]);
+    const config = createConfig({ staleCallReaperSeconds: 60 });
+    const server = new VoiceCallWebhookServer(config, manager, provider);
+
+    try {
+      await server.start();
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(endCall).not.toHaveBeenCalled();
     } finally {
       await server.stop();
     }

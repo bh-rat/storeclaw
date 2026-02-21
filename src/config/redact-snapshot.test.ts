@@ -33,7 +33,7 @@ function makeSnapshot<TConfig extends Record<string, unknown>>(
     issues: [],
     warnings: [],
     legacyIssues: [],
-  } as TestSnapshot<TConfig>;
+  } as unknown as TestSnapshot<TConfig>;
 }
 
 function restoreRedactedValues<TOriginal>(
@@ -796,6 +796,37 @@ describe("restoreRedactedValues", () => {
   it("handles null and undefined inputs", () => {
     expect(restoreRedactedValues_orig(null, { token: "x" }).ok).toBe(false);
     expect(restoreRedactedValues_orig(undefined, { token: "x" }).ok).toBe(false);
+  });
+
+  it("rejects non-object inputs", () => {
+    expect(restoreRedactedValues_orig("token-value", { token: "x" })).toEqual({
+      ok: false,
+      error: "input not an object",
+    });
+  });
+
+  it("returns a human-readable error when sentinel cannot be restored", () => {
+    const incoming = {
+      channels: { newChannel: { token: REDACTED_SENTINEL } },
+    };
+    const result = restoreRedactedValues_orig(incoming, {});
+    expect(result.ok).toBe(false);
+    expect(result.humanReadableMessage).toContain(REDACTED_SENTINEL);
+    expect(result.humanReadableMessage).toContain("channels.newChannel.token");
+  });
+
+  it("keeps unmatched wildcard array entries unchanged outside extension paths", () => {
+    const hints: ConfigUiHints = {
+      "custom.*": { sensitive: true },
+    };
+    const incoming = {
+      custom: { items: [REDACTED_SENTINEL] },
+    };
+    const original = {
+      custom: { items: ["original-secret-value"] },
+    };
+    const result = restoreRedactedValues(incoming, original, hints) as typeof incoming;
+    expect(result.custom.items[0]).toBe(REDACTED_SENTINEL);
   });
 
   it("round-trips config through redact → restore", () => {
