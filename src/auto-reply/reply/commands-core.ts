@@ -17,13 +17,13 @@ import {
   handleStatusCommand,
   handleWhoamiCommand,
 } from "./commands-info.js";
-import { handleMeshCommand } from "./commands-mesh.js";
 import { handleModelsCommand } from "./commands-models.js";
 import { handlePluginCommand } from "./commands-plugin.js";
 import {
   handleAbortTrigger,
   handleActivationCommand,
   handleRestartCommand,
+  handleSessionCommand,
   handleSendPolicyCommand,
   handleStopCommand,
   handleUsageCommand,
@@ -48,12 +48,12 @@ export async function handleCommands(params: HandleCommandsParams): Promise<Comm
       handleActivationCommand,
       handleSendPolicyCommand,
       handleUsageCommand,
+      handleSessionCommand,
       handleRestartCommand,
       handleTtsCommands,
       handleHelpCommand,
       handleCommandsListCommand,
       handleStatusCommand,
-      handleMeshCommand,
       handleAllowlistCommand,
       handleApproveCommand,
       handleContextCommand,

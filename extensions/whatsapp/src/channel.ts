@@ -118,6 +118,12 @@ export const whatsappPlugin: ChannelPlugin<ResolvedWhatsAppAccount> = {
         .filter((entry): entry is string => Boolean(entry))
         .map((entry) => (entry === "*" ? entry : normalizeWhatsAppTarget(entry)))
         .filter((entry): entry is string => Boolean(entry)),
+    resolveDefaultTo: ({ cfg, accountId }) => {
+      const root = cfg.channels?.whatsapp;
+      const normalized = normalizeAccountId(accountId);
+      const account = root?.accounts?.[normalized];
+      return (account?.defaultTo ?? root?.defaultTo)?.trim() || undefined;
+    },
   },
   security: {
     resolveDmPolicy: ({ cfg, accountId, account }) => {
@@ -290,15 +296,12 @@ export const whatsappPlugin: ChannelPlugin<ResolvedWhatsAppAccount> = {
     pollMaxOptions: 12,
     resolveTarget: ({ to, allowFrom, mode }) =>
       resolveWhatsAppOutboundTarget({ to, allowFrom, mode }),
-    sendText: async (params) => {
-      const { to, text, accountId, deps, gifPlayback } = params;
-      const linkPreview = (params as { linkPreview?: boolean }).linkPreview;
+    sendText: async ({ to, text, accountId, deps, gifPlayback }) => {
       const send = deps?.sendWhatsApp ?? getWhatsAppRuntime().channel.whatsapp.sendMessageWhatsApp;
       const result = await send(to, text, {
         verbose: false,
         accountId: accountId ?? undefined,
         gifPlayback,
-        linkPreview,
       });
       return { channel: "whatsapp", ...result };
     },
