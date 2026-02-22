@@ -1,4 +1,5 @@
 import type { ChatType } from "../channels/chat-type.js";
+import type { SafeBinProfileFixture } from "../infra/exec-safe-bin-policy.js";
 import type { AgentElevatedAllowFromConfig, SessionSendPolicyAction } from "./types.base.js";
 
 export type MediaUnderstandingScopeMatch = {
@@ -175,10 +176,46 @@ export type GroupToolPolicyConfig = {
   deny?: string[];
 };
 
+export const TOOLS_BY_SENDER_KEY_TYPES = ["id", "e164", "username", "name"] as const;
+export type ToolsBySenderKeyType = (typeof TOOLS_BY_SENDER_KEY_TYPES)[number];
+
+export function parseToolsBySenderTypedKey(
+  rawKey: string,
+): { type: ToolsBySenderKeyType; value: string } | undefined {
+  const trimmed = rawKey.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const lowered = trimmed.toLowerCase();
+  for (const type of TOOLS_BY_SENDER_KEY_TYPES) {
+    const prefix = `${type}:`;
+    if (!lowered.startsWith(prefix)) {
+      continue;
+    }
+    return {
+      type,
+      value: trimmed.slice(prefix.length),
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Per-sender overrides.
+ *
+ * Prefer explicit key prefixes:
+ * - id:<senderId>
+ * - e164:<phone>
+ * - username:<handle>
+ * - name:<display-name>
+ * - * (wildcard)
+ *
+ * Legacy unprefixed keys are supported for backward compatibility and are matched as senderId only.
+ */
 export type GroupToolPolicyBySenderConfig = Record<string, GroupToolPolicyConfig>;
 
 export type ExecToolConfig = {
-  /** Exec host routing (default: sandbox). */
+  /** Exec host routing (default: sandbox with sandbox runtime, otherwise gateway). */
   host?: "sandbox" | "gateway" | "node";
   /** Exec security mode (default: deny). */
   security?: "deny" | "allowlist" | "full";
@@ -190,6 +227,8 @@ export type ExecToolConfig = {
   pathPrepend?: string[];
   /** Safe stdin-only binaries that can run without allowlist entries. */
   safeBins?: string[];
+  /** Optional custom safe-bin profiles for entries in tools.exec.safeBins. */
+  safeBinProfiles?: Record<string, SafeBinProfileFixture>;
   /** Default time (ms) before an exec command auto-backgrounds. */
   backgroundMs?: number;
   /** Default timeout (seconds) before auto-killing exec commands. */
@@ -520,6 +559,8 @@ export type ToolsConfig = {
     model?: string | { primary?: string; fallbacks?: string[] };
     tools?: {
       allow?: string[];
+      /** Additional allowlist entries merged into allow and/or default sub-agent denylist. */
+      alsoAllow?: string[];
       deny?: string[];
     };
   };

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { createEditorSubmitHandler } from "./tui.js";
+import { describe, expect, it } from "vitest";
+import { createSubmitHarness } from "./tui-submit-test-helpers.js";
 
 function createSubmitHarness() {
   const editor = {
@@ -20,34 +20,34 @@ function createSubmitHarness() {
 
 describe("createEditorSubmitHandler", () => {
   it("adds submitted messages to editor history", () => {
-    const { editor, handler } = createSubmitHarness();
+    const { editor, onSubmit } = createSubmitHarness();
 
-    handler("hello world");
+    onSubmit("hello world");
 
     expect(editor.setText).toHaveBeenCalledWith("");
     expect(editor.addToHistory).toHaveBeenCalledWith("hello world");
   });
 
   it("trims input before adding to history", () => {
-    const { editor, handler } = createSubmitHarness();
+    const { editor, onSubmit } = createSubmitHarness();
 
-    handler("   hi   ");
+    onSubmit("   hi   ");
 
     expect(editor.addToHistory).toHaveBeenCalledWith("hi");
   });
 
   it.each(["", "   "])("does not add blank submissions to history", (text) => {
-    const { editor, handler } = createSubmitHarness();
+    const { editor, onSubmit } = createSubmitHarness();
 
-    handler(text);
+    onSubmit(text);
 
     expect(editor.addToHistory).not.toHaveBeenCalled();
   });
 
   it("routes slash commands to handleCommand", () => {
-    const { editor, handleCommand, sendMessage, handler } = createSubmitHarness();
+    const { editor, handleCommand, sendMessage, onSubmit } = createSubmitHarness();
 
-    handler("/models");
+    onSubmit("/models");
 
     expect(editor.addToHistory).toHaveBeenCalledWith("/models");
     expect(handleCommand).toHaveBeenCalledWith("/models");
@@ -55,9 +55,9 @@ describe("createEditorSubmitHandler", () => {
   });
 
   it("routes normal messages to sendMessage", () => {
-    const { editor, handleCommand, sendMessage, handler } = createSubmitHarness();
+    const { editor, handleCommand, sendMessage, onSubmit } = createSubmitHarness();
 
-    handler("hello");
+    onSubmit("hello");
 
     expect(editor.addToHistory).toHaveBeenCalledWith("hello");
     expect(sendMessage).toHaveBeenCalledWith("hello");
@@ -65,9 +65,9 @@ describe("createEditorSubmitHandler", () => {
   });
 
   it("routes bang-prefixed lines to handleBangLine", () => {
-    const { handleBangLine, handler } = createSubmitHarness();
+    const { handleBangLine, onSubmit } = createSubmitHarness();
 
-    handler("!ls");
+    onSubmit("!ls");
 
     expect(handleBangLine).toHaveBeenCalledWith("!ls");
   });

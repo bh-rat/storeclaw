@@ -1,5 +1,8 @@
 ---
 summary: "Frequently asked questions about OpenClaw setup, configuration, and usage"
+read_when:
+  - Answering common setup, install, onboarding, or runtime support questions
+  - Triaging user-reported issues before deeper debugging
 title: "FAQ"
 ---
 
@@ -1037,6 +1040,26 @@ Token tip: long tasks and sub-agents both consume tokens. If cost is a concern, 
 cheaper model for sub-agents via `agents.defaults.subagents.model`.
 
 Docs: [Sub-agents](/tools/subagents).
+
+### How do thread-bound subagent sessions work on Discord
+
+Use thread bindings. You can bind a Discord thread to a subagent or session target so follow-up messages in that thread stay on that bound session.
+
+Basic flow:
+
+- Spawn with `sessions_spawn` using `thread: true` (and optionally `mode: "session"` for persistent follow-up).
+- Or manually bind with `/focus <target>`.
+- Use `/agents` to inspect binding state.
+- Use `/session ttl <duration|off>` to control auto-unfocus.
+- Use `/unfocus` to detach the thread.
+
+Required config:
+
+- Global defaults: `session.threadBindings.enabled`, `session.threadBindings.ttlHours`.
+- Discord overrides: `channels.discord.threadBindings.enabled`, `channels.discord.threadBindings.ttlHours`.
+- Auto-bind on spawn: set `channels.discord.threadBindings.spawnSubagentSessions: true`.
+
+Docs: [Sub-agents](/tools/subagents), [Discord](/channels/discord), [Configuration Reference](/gateway/configuration-reference), [Slash commands](/tools/slash-commands).
 
 ### Cron or reminders do not fire What should I check
 

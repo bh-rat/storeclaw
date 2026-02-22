@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
 import type { AuthProfileStore } from "./auth-profiles.js";
+import { makeModelFallbackCfg } from "./test-helpers/model-fallback-config-fixture.js";
 
 // Mock auth-profiles module — must be before importing model-fallback
 vi.mock("./auth-profiles.js", () => ({
@@ -23,23 +24,48 @@ const mockedGetSoonestCooldownExpiry = vi.mocked(getSoonestCooldownExpiry);
 const mockedIsProfileInCooldown = vi.mocked(isProfileInCooldown);
 const mockedResolveAuthProfileOrder = vi.mocked(resolveAuthProfileOrder);
 
-function makeCfg(overrides: Partial<OpenClawConfig> = {}): OpenClawConfig {
-  return {
-    agents: {
-      defaults: {
-        model: {
-          primary: "openai/gpt-4.1-mini",
-          fallbacks: ["anthropic/claude-haiku-3-5"],
-        },
-      },
-    },
-    ...overrides,
-  } as OpenClawConfig;
+const makeCfg = makeModelFallbackCfg;
+
+function expectFallbackUsed(
+  result: { result: unknown; attempts: Array<{ reason?: string }> },
+  run: {
+    (...args: unknown[]): unknown;
+    mock: { calls: unknown[][] };
+  },
+) {
+  expect(result.result).toBe("ok");
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(run).toHaveBeenCalledWith("anthropic", "claude-haiku-3-5");
+  expect(result.attempts[0]?.reason).toBe("rate_limit");
+}
+
+function expectPrimaryProbeSuccess(
+  result: { result: unknown },
+  run: {
+    (...args: unknown[]): unknown;
+    mock: { calls: unknown[][] };
+  },
+  expectedResult: unknown,
+) {
+  expect(result.result).toBe(expectedResult);
+  expect(run).toHaveBeenCalledTimes(1);
+  expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
 }
 
 describe("runWithModelFallback – probe logic", () => {
   let realDateNow: () => number;
   const NOW = 1_700_000_000_000;
+
+  const runPrimaryCandidate = (
+    cfg: OpenClawConfig,
+    run: (provider: string, model: string) => Promise<unknown>,
+  ) =>
+    runWithModelFallback({
+      cfg,
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      run,
+    });
 
   beforeEach(() => {
     realDateNow = Date.now;
@@ -87,18 +113,10 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("ok");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
+    const result = await runPrimaryCandidate(cfg, run);
 
     // Should skip primary and use fallback
-    expect(result.result).toBe("ok");
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith("anthropic", "claude-haiku-3-5");
-    expect(result.attempts[0]?.reason).toBe("rate_limit");
+    expectFallbackUsed(result, run);
   });
 
   it("probes primary model when within 2-min margin of cooldown expiry", async () => {
@@ -109,17 +127,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("probed-ok");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    // Should probe primary and succeed
-    expect(result.result).toBe("probed-ok");
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "probed-ok");
   });
 
   it("probes primary model when cooldown already expired", async () => {
@@ -130,16 +139,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("recovered");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    expect(result.result).toBe("recovered");
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "recovered");
   });
 
   it("does NOT probe non-primary candidates during cooldown", async () => {
@@ -193,18 +194,10 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("ok");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
+    const result = await runPrimaryCandidate(cfg, run);
 
     // Should be throttled → skip primary, use fallback
-    expect(result.result).toBe("ok");
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith("anthropic", "claude-haiku-3-5");
-    expect(result.attempts[0]?.reason).toBe("rate_limit");
+    expectFallbackUsed(result, run);
   });
 
   it("allows probe when 30s have passed since last probe", async () => {
@@ -217,16 +210,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("probed-ok");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    expect(result.result).toBe("probed-ok");
-    expect(run).toHaveBeenCalledTimes(1);
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "probed-ok");
   });
 
   it("handles non-finite soonest safely (treats as probe-worthy)", async () => {
@@ -237,15 +222,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("ok-infinity");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    expect(result.result).toBe("ok-infinity");
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "ok-infinity");
   });
 
   it("handles NaN soonest safely (treats as probe-worthy)", async () => {
@@ -255,15 +233,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("ok-nan");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    expect(result.result).toBe("ok-nan");
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "ok-nan");
   });
 
   it("handles null soonest safely (treats as probe-worthy)", async () => {
@@ -273,15 +244,8 @@ describe("runWithModelFallback – probe logic", () => {
 
     const run = vi.fn().mockResolvedValue("ok-null");
 
-    const result = await runWithModelFallback({
-      cfg,
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      run,
-    });
-
-    expect(result.result).toBe("ok-null");
-    expect(run).toHaveBeenCalledWith("openai", "gpt-4.1-mini");
+    const result = await runPrimaryCandidate(cfg, run);
+    expectPrimaryProbeSuccess(result, run, "ok-null");
   });
 
   it("single candidate skips with rate_limit and exhausts candidates", async () => {

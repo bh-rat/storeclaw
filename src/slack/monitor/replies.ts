@@ -16,9 +16,13 @@ export async function deliverReplies(params: {
   runtime: RuntimeEnv;
   textLimit: number;
   replyThreadTs?: string;
+  replyToMode: "off" | "first" | "all";
 }) {
   for (const payload of params.replies) {
-    const threadTs = payload.replyToId ?? params.replyThreadTs;
+    // Keep reply tags opt-in: when replyToMode is off, explicit reply tags
+    // must not force threading.
+    const inlineReplyToId = params.replyToMode === "off" ? undefined : payload.replyToId;
+    const threadTs = inlineReplyToId ?? params.replyThreadTs;
     const mediaList = payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
     const text = payload.text ?? "";
     if (!text && mediaList.length === 0) {
@@ -88,10 +92,11 @@ function createSlackReplyReferencePlanner(params: {
   incomingThreadTs: string | undefined;
   messageTs: string | undefined;
   hasReplied?: boolean;
+  isThreadReply?: boolean;
 }) {
-  // When already inside a Slack thread, always stay in it regardless of
-  // replyToMode — thread_ts is required to keep messages in the thread.
-  const effectiveMode = params.incomingThreadTs ? "all" : params.replyToMode;
+  // Only force threading for real user thread replies. If Slack auto-populates
+  // thread_ts on top-level messages, preserve the configured reply mode.
+  const effectiveMode = params.isThreadReply ? "all" : params.replyToMode;
   return createReplyReferencePlanner({
     replyToMode: effectiveMode,
     existingId: params.incomingThreadTs,
@@ -105,12 +110,14 @@ export function createSlackReplyDeliveryPlan(params: {
   incomingThreadTs: string | undefined;
   messageTs: string | undefined;
   hasRepliedRef: { value: boolean };
+  isThreadReply?: boolean;
 }): SlackReplyDeliveryPlan {
   const replyReference = createSlackReplyReferencePlanner({
     replyToMode: params.replyToMode,
     incomingThreadTs: params.incomingThreadTs,
     messageTs: params.messageTs,
     hasReplied: params.hasRepliedRef.value,
+    isThreadReply: params.isThreadReply,
   });
   return {
     nextThreadTs: () => replyReference.use(),
