@@ -1,15 +1,7 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { MsgContext } from "../auto-reply/templating.js";
 import type { OpenClawConfig } from "../config/config.js";
-import {
-  buildProviderRegistry,
-  createMediaAttachmentCache,
-  normalizeMediaAttachments,
-  runCapability,
-} from "./runner.js";
+import { buildProviderRegistry, runCapability } from "./runner.js";
+import { withAudioFixture } from "./runner.test-utils.js";
 
 async function withAudioFixture(
   run: (params: {
@@ -39,7 +31,7 @@ async function withAudioFixture(
 
 describe("runCapability deepgram provider options", () => {
   it("merges provider options, headers, and baseUrl overrides", async () => {
-    await withAudioFixture(async ({ ctx, media, cache }) => {
+    await withAudioFixture("openclaw-deepgram", async ({ ctx, media, cache }) => {
       let seenQuery: Record<string, string | number | boolean> | undefined;
       let seenBaseUrl: string | undefined;
       let seenHeaders: Record<string, string> | undefined;

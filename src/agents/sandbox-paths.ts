@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isNotFoundPathError, isPathInside } from "../infra/path-guards.js";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 const HTTP_URL_RE = /^https?:\/\//i;
 const DATA_URL_RE = /^data:/i;
+const SANDBOX_CONTAINER_WORKDIR = "/workspace";
 
 function normalizeUnicodeSpaces(str: string): string {
   return str.replace(UNICODE_SPACES, " ");
@@ -89,12 +91,62 @@ export async function resolveSandboxedMediaSource(params: {
       throw new Error(`Invalid file:// URL for sandboxed media: ${raw}`);
     }
   }
-  const resolved = await assertSandboxPath({
+  const containerWorkspaceMapped = mapContainerWorkspacePath({
+    candidate,
+    sandboxRoot: params.sandboxRoot,
+  });
+  if (containerWorkspaceMapped) {
+    candidate = containerWorkspaceMapped;
+  }
+  const tmpMediaPath = await resolveAllowedTmpMediaPath({
+    candidate,
+    sandboxRoot: params.sandboxRoot,
+  });
+  if (tmpMediaPath) {
+    return tmpMediaPath;
+  }
+  const sandboxResult = await assertSandboxPath({
     filePath: candidate,
     cwd: params.sandboxRoot,
     root: params.sandboxRoot,
   });
-  return resolved.resolved;
+  return sandboxResult.resolved;
+}
+
+function mapContainerWorkspacePath(params: {
+  candidate: string;
+  sandboxRoot: string;
+}): string | undefined {
+  const normalized = params.candidate.replace(/\\/g, "/");
+  if (normalized === SANDBOX_CONTAINER_WORKDIR) {
+    return path.resolve(params.sandboxRoot);
+  }
+  const prefix = `${SANDBOX_CONTAINER_WORKDIR}/`;
+  if (!normalized.startsWith(prefix)) {
+    return undefined;
+  }
+  const rel = normalized.slice(prefix.length);
+  if (!rel) {
+    return path.resolve(params.sandboxRoot);
+  }
+  return path.resolve(params.sandboxRoot, ...rel.split("/").filter(Boolean));
+}
+
+async function resolveAllowedTmpMediaPath(params: {
+  candidate: string;
+  sandboxRoot: string;
+}): Promise<string | undefined> {
+  const candidateIsAbsolute = path.isAbsolute(expandPath(params.candidate));
+  if (!candidateIsAbsolute) {
+    return undefined;
+  }
+  const resolved = path.resolve(resolveSandboxInputPath(params.candidate, params.sandboxRoot));
+  const tmpDir = path.resolve(os.tmpdir());
+  if (!isPathInside(tmpDir, resolved)) {
+    return undefined;
+  }
+  await assertNoSymlinkEscape(path.relative(tmpDir, resolved), tmpDir);
+  return resolved;
 }
 
 async function assertNoSymlinkEscape(
@@ -129,8 +181,7 @@ async function assertNoSymlinkEscape(
         current = target;
       }
     } catch (err) {
-      const anyErr = err as { code?: string };
-      if (anyErr.code === "ENOENT") {
+      if (isNotFoundPathError(err)) {
         return;
       }
       throw err;
@@ -144,14 +195,6 @@ async function tryRealpath(value: string): Promise<string> {
   } catch {
     return path.resolve(value);
   }
-}
-
-function isPathInside(root: string, target: string): boolean {
-  const relative = path.relative(root, target);
-  if (!relative || relative === "") {
-    return true;
-  }
-  return !(relative.startsWith("..") || path.isAbsolute(relative));
 }
 
 function shortPath(value: string) {

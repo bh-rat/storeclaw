@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as schedule from "./schedule.js";
 import { CronService } from "./service.js";
-import { createRunningCronServiceState } from "./service.test-harness.js";
+import { createDeferred, createRunningCronServiceState } from "./service.test-harness.js";
 import { computeJobNextRunAtMs } from "./service/jobs.js";
 import { createCronServiceState, type CronEvent } from "./service/state.js";
 import { onTimer } from "./service/timer.js";
@@ -38,16 +38,6 @@ async function makeStorePath() {
   };
 }
 
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 function createDueIsolatedJob(params: {
   id: string;
   nowMs: number;
@@ -75,6 +65,29 @@ function createDefaultIsolatedRunner(): CronServiceOptions["runIsolatedAgentJob"
     status: "ok",
     summary: "ok",
   }) as CronServiceOptions["runIsolatedAgentJob"];
+}
+
+function createAbortAwareIsolatedRunner(summary = "late") {
+  let observedAbortSignal: AbortSignal | undefined;
+  const runIsolatedAgentJob = vi.fn(async ({ abortSignal }) => {
+    observedAbortSignal = abortSignal;
+    await new Promise<void>((resolve) => {
+      if (!abortSignal) {
+        return;
+      }
+      if (abortSignal.aborted) {
+        resolve();
+        return;
+      }
+      abortSignal.addEventListener("abort", () => resolve(), { once: true });
+    });
+    return { status: "ok" as const, summary };
+  }) as CronServiceOptions["runIsolatedAgentJob"];
+
+  return {
+    runIsolatedAgentJob,
+    getObservedAbortSignal: () => observedAbortSignal,
+  };
 }
 
 function createIsolatedRegressionJob(params: {
@@ -563,7 +576,6 @@ describe("Cron issue regressions", () => {
 
     let now = scheduledAt;
     let fireCount = 0;
-    const events: CronEvent[] = [];
     const state = createCronServiceState({
       cronEnabled: true,
       storePath: store.storePath,
@@ -571,9 +583,6 @@ describe("Cron issue regressions", () => {
       nowMs: () => now,
       enqueueSystemEvent: vi.fn(),
       requestHeartbeatNow: vi.fn(),
-      onEvent: (evt) => {
-        events.push(evt);
-      },
       runIsolatedAgentJob: vi.fn(async () => {
         // Job completes very quickly (7ms) — still within the same second
         now += 7;
@@ -683,6 +692,80 @@ describe("Cron issue regressions", () => {
     expect(job?.state.lastStatus).toBe("ok");
   });
 
+  it("aborts isolated runs when cron timeout fires", async () => {
+    vi.useRealTimers();
+    const store = await makeStorePath();
+    const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
+    const cronJob = createIsolatedRegressionJob({
+      id: "abort-on-timeout",
+      name: "abort timeout",
+      scheduledAt,
+      schedule: { kind: "at", at: new Date(scheduledAt).toISOString() },
+      payload: { kind: "agentTurn", message: "work", timeoutSeconds: 0.01 },
+      state: { nextRunAtMs: scheduledAt },
+    });
+    await writeCronJobs(store.storePath, [cronJob]);
+
+    let now = scheduledAt;
+    const abortAwareRunner = createAbortAwareIsolatedRunner();
+    const state = createCronServiceState({
+      cronEnabled: true,
+      storePath: store.storePath,
+      log: noopLogger,
+      nowMs: () => now,
+      enqueueSystemEvent: vi.fn(),
+      requestHeartbeatNow: vi.fn(),
+      runIsolatedAgentJob: vi.fn(async (params) => {
+        const result = await abortAwareRunner.runIsolatedAgentJob(params);
+        now += 5;
+        return result;
+      }),
+    });
+
+    await onTimer(state);
+
+    expect(abortAwareRunner.getObservedAbortSignal()).toBeDefined();
+    expect(abortAwareRunner.getObservedAbortSignal()?.aborted).toBe(true);
+    const job = state.store?.jobs.find((entry) => entry.id === "abort-on-timeout");
+    expect(job?.state.lastStatus).toBe("error");
+    expect(job?.state.lastError).toContain("timed out");
+  });
+
+  it("applies timeoutSeconds to manual cron.run isolated executions", async () => {
+    vi.useRealTimers();
+    const store = await makeStorePath();
+    const abortAwareRunner = createAbortAwareIsolatedRunner();
+
+    const cron = await startCronForStore({
+      storePath: store.storePath,
+      runIsolatedAgentJob: abortAwareRunner.runIsolatedAgentJob,
+    });
+
+    const job = await cron.add({
+      name: "manual timeout",
+      enabled: true,
+      schedule: { kind: "every", everyMs: 60_000, anchorMs: Date.now() },
+      sessionTarget: "isolated",
+      wakeMode: "next-heartbeat",
+      payload: { kind: "agentTurn", message: "work", timeoutSeconds: 0.01 },
+      delivery: { mode: "none" },
+    });
+
+    const result = await cron.run(job.id, "force");
+    expect(result).toEqual({ ok: true, ran: true });
+    expect(abortAwareRunner.getObservedAbortSignal()).toBeDefined();
+    expect(abortAwareRunner.getObservedAbortSignal()?.aborted).toBe(true);
+
+    const updated = (await cron.list({ includeDisabled: true })).find(
+      (entry) => entry.id === job.id,
+    );
+    expect(updated?.state.lastStatus).toBe("error");
+    expect(updated?.state.lastError).toContain("timed out");
+    expect(updated?.state.runningAtMs).toBeUndefined();
+
+    cron.stop();
+  });
+
   it("retries cron schedule computation from the next second when the first attempt returns undefined (#17821)", () => {
     const scheduledAt = Date.parse("2026-02-15T13:00:00.000Z");
     const cronJob = createIsolatedRegressionJob({
@@ -775,6 +858,7 @@ describe("Cron issue regressions", () => {
     let now = dueAt;
     let activeRuns = 0;
     let peakActiveRuns = 0;
+    const bothRunsStarted = createDeferred<void>();
     const firstRun = createDeferred<{ status: "ok"; summary: string }>();
     const secondRun = createDeferred<{ status: "ok"; summary: string }>();
     const state = createCronServiceState({
@@ -788,6 +872,9 @@ describe("Cron issue regressions", () => {
       runIsolatedAgentJob: vi.fn(async (params: { job: { id: string } }) => {
         activeRuns += 1;
         peakActiveRuns = Math.max(peakActiveRuns, activeRuns);
+        if (peakActiveRuns >= 2) {
+          bothRunsStarted.resolve();
+        }
         try {
           const result =
             params.job.id === first.id ? await firstRun.promise : await secondRun.promise;
@@ -800,7 +887,12 @@ describe("Cron issue regressions", () => {
     });
 
     const timerPromise = onTimer(state);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await Promise.race([
+      bothRunsStarted.promise,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timed out waiting for concurrent job starts")), 1_000),
+      ),
+    ]);
 
     expect(peakActiveRuns).toBe(2);
 

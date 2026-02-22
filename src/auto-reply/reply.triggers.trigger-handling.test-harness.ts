@@ -124,11 +124,18 @@ export function makeCfg(home: string): OpenClawConfig {
       defaults: {
         model: { primary: "anthropic/claude-opus-4-5" },
         workspace: join(home, "openclaw"),
+        // Test harness: avoid 1s coalescer idle sleeps that dominate trigger suites.
+        blockStreamingCoalesce: { idleMs: 1 },
       },
     },
     channels: {
       whatsapp: {
         allowFrom: ["*"],
+      },
+    },
+    messages: {
+      queue: {
+        debounceMs: 0,
       },
     },
     session: { store: join(home, "sessions.json") },
@@ -145,6 +152,13 @@ export function requireSessionStorePath(cfg: { session?: { store?: string } }): 
     throw new Error("expected session store path");
   }
   return storePath;
+}
+
+export async function readSessionStore(cfg: {
+  session?: { store?: string };
+}): Promise<Record<string, { elevatedLevel?: string }>> {
+  const storeRaw = await fs.readFile(requireSessionStorePath(cfg), "utf-8");
+  return JSON.parse(storeRaw) as Record<string, { elevatedLevel?: string }>;
 }
 
 export function makeWhatsAppElevatedCfg(
@@ -196,9 +210,53 @@ export async function runDirectElevatedToggleAndLoadStore(params: {
   if (!storePath) {
     throw new Error("session.store is required in test config");
   }
-  const storeRaw = await fs.readFile(storePath, "utf-8");
-  const store = JSON.parse(storeRaw) as Record<string, { elevatedLevel?: string }>;
+  const store = await readSessionStore(params.cfg);
   return { text, store };
+}
+
+export async function expectDirectElevatedToggleOn(params: {
+  getReplyFromConfig: typeof import("./reply.js").getReplyFromConfig;
+}) {
+  await withTempHome(async (home) => {
+    const cfg = makeWhatsAppElevatedCfg(home);
+    const { text, store } = await runDirectElevatedToggleAndLoadStore({
+      cfg,
+      getReplyFromConfig: params.getReplyFromConfig,
+    });
+    expect(text).toContain("Elevated mode set to ask");
+    expect(store[MAIN_SESSION_KEY]?.elevatedLevel).toBe("on");
+  });
+}
+
+export async function expectInlineCommandHandledAndStripped(params: {
+  home: string;
+  getReplyFromConfig: typeof import("./reply.js").getReplyFromConfig;
+  body: string;
+  stripToken: string;
+  blockReplyContains: string;
+  requestOverrides?: Record<string, unknown>;
+}) {
+  const runEmbeddedPiAgentMock = mockRunEmbeddedPiAgentOk();
+  const { blockReplies, handlers } = createBlockReplyCollector();
+  const res = await params.getReplyFromConfig(
+    {
+      Body: params.body,
+      From: "+1002",
+      To: "+2000",
+      CommandAuthorized: true,
+      ...params.requestOverrides,
+    },
+    handlers,
+    makeCfg(params.home),
+  );
+
+  const text = Array.isArray(res) ? res[0]?.text : res?.text;
+  expect(blockReplies.length).toBe(1);
+  expect(blockReplies[0]?.text).toContain(params.blockReplyContains);
+  expect(runEmbeddedPiAgentMock).toHaveBeenCalled();
+  const prompt = runEmbeddedPiAgentMock.mock.calls[0]?.[0]?.prompt ?? "";
+  expect(prompt).not.toContain(params.stripToken);
+  expect(text).toBe("ok");
 }
 
 export async function runGreetingPromptForBareNewOrReset(params: {
