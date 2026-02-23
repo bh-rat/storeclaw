@@ -313,31 +313,6 @@ export async function continueCall(
         String(lastTurnListenWaitMs),
     );
 
-    const lastTurnLatencyMs = transcriptReceivedAt - turnStartedAt;
-    const lastTurnListenWaitMs = transcriptReceivedAt - listenStartedAt;
-    const turnCount =
-      call.metadata && typeof call.metadata.turnCount === "number"
-        ? call.metadata.turnCount + 1
-        : 1;
-
-    call.metadata = {
-      ...(call.metadata ?? {}),
-      turnCount,
-      lastTurnLatencyMs,
-      lastTurnListenWaitMs,
-      lastTurnCompletedAt: transcriptReceivedAt,
-    };
-    persistCallRecord(ctx.storePath, call);
-
-    console.log(
-      "[voice-call] continueCall latency call=" +
-        call.callId +
-        " totalMs=" +
-        String(lastTurnLatencyMs) +
-        " listenWaitMs=" +
-        String(lastTurnListenWaitMs),
-    );
-
     return { success: true, transcript };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };

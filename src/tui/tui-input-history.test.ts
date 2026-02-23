@@ -1,23 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createSubmitHarness } from "./tui-submit-test-helpers.js";
 
-function createSubmitHarness() {
-  const editor = {
-    setText: vi.fn(),
-    addToHistory: vi.fn(),
-  };
-  const handleCommand = vi.fn();
-  const sendMessage = vi.fn();
-  const handleBangLine = vi.fn();
-  const handler = createEditorSubmitHandler({
-    editor,
-    handleCommand,
-    sendMessage,
-    handleBangLine,
-  });
-  return { editor, handleCommand, sendMessage, handleBangLine, handler };
-}
-
 describe("createEditorSubmitHandler", () => {
   it("adds submitted messages to editor history", () => {
     const { editor, onSubmit } = createSubmitHarness();

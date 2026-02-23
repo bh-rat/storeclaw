@@ -3,13 +3,6 @@ import { withFetchPreconnect } from "../test-utils/fetch-mock.js";
 import { resolveDiscordChannelAllowlist } from "./resolve-channels.js";
 import { jsonResponse, urlToString } from "./test-http-helpers.js";
 
-const urlToString = (url: Request | URL | string): string => {
-  if (typeof url === "string") {
-    return url;
-  }
-  return "url" in url ? url.url : String(url);
-};
-
 describe("resolveDiscordChannelAllowlist", () => {
   it("resolves guild/channel by name", async () => {
     const fetcher = withFetchPreconnect(async (input: RequestInfo | URL) => {

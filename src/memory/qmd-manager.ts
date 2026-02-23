@@ -1727,6 +1727,7 @@ export class QmdMemoryManager implements MemorySearchManager {
         if (typeof entry.docid !== "string" || !entry.docid.trim()) {
           continue;
         }
+        const normalizedDocId = entry.docid.trim();
         const withCollection = {
           ...entry,
           docid: normalizedDocId,

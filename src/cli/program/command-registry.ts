@@ -238,17 +238,6 @@ function removeEntryCommands(program: Command, entry: CoreCliEntry) {
   }
 }
 
-function removeEntryCommands(program: Command, entry: CoreCliEntry) {
-  // Some registrars install multiple top-level commands (e.g. status/health/sessions).
-  // Remove placeholders/old registrations for all names in the entry before re-registering.
-  for (const cmd of entry.commands) {
-    const existing = program.commands.find((c) => c.name() === cmd.name);
-    if (existing) {
-      removeCommand(program, existing);
-    }
-  }
-}
-
 function registerLazyCoreCommand(
   program: Command,
   ctx: ProgramContext,

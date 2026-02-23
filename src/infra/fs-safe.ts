@@ -85,51 +85,6 @@ async function openVerifiedLocalFile(filePath: string): Promise<SafeOpenResult> 
   }
 }
 
-async function openVerifiedLocalFile(filePath: string): Promise<SafeOpenResult> {
-  let handle: FileHandle;
-  try {
-    handle = await fs.open(filePath, OPEN_READ_FLAGS);
-  } catch (err) {
-    if (isNotFoundError(err)) {
-      throw new SafeOpenError("not-found", "file not found");
-    }
-    if (isSymlinkOpenError(err)) {
-      throw new SafeOpenError("symlink", "symlink open blocked", { cause: err });
-    }
-    throw err;
-  }
-
-  try {
-    const [stat, lstat] = await Promise.all([handle.stat(), fs.lstat(filePath)]);
-    if (lstat.isSymbolicLink()) {
-      throw new SafeOpenError("symlink", "symlink not allowed");
-    }
-    if (!stat.isFile()) {
-      throw new SafeOpenError("not-file", "not a file");
-    }
-    if (stat.ino !== lstat.ino || stat.dev !== lstat.dev) {
-      throw new SafeOpenError("path-mismatch", "path changed during read");
-    }
-
-    const realPath = await fs.realpath(filePath);
-    const realStat = await fs.stat(realPath);
-    if (stat.ino !== realStat.ino || stat.dev !== realStat.dev) {
-      throw new SafeOpenError("path-mismatch", "path mismatch");
-    }
-
-    return { handle, realPath, stat };
-  } catch (err) {
-    await handle.close().catch(() => {});
-    if (err instanceof SafeOpenError) {
-      throw err;
-    }
-    if (isNotFoundError(err)) {
-      throw new SafeOpenError("not-found", "file not found");
-    }
-    throw err;
-  }
-}
-
 export async function openFileWithinRoot(params: {
   rootDir: string;
   relativePath: string;

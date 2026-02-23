@@ -35,13 +35,6 @@ function resolveShellExecEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return execEnv;
 }
 
-function resolveTimeoutMs(timeoutMs: number | undefined): number {
-  if (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs)) {
-    return DEFAULT_TIMEOUT_MS;
-  }
-  return Math.max(0, timeoutMs);
-}
-
 function readEtcShells(): Set<string> | null {
   if (cachedEtcShells !== undefined) {
     return cachedEtcShells;
