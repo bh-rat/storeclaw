@@ -107,7 +107,7 @@ describe("handleDiscordMessagingAction", () => {
       expect(reactMessageDiscord).toHaveBeenCalledWith("C1", "M1", "✅", expectedOptions);
       return;
     }
-    expect(reactMessageDiscord).toHaveBeenCalledWith("C1", "M1", "✅");
+    expect(reactMessageDiscord).toHaveBeenCalledWith("C1", "M1", "✅", {});
   });
 
   it("removes reactions on empty emoji", async () => {
@@ -120,7 +120,7 @@ describe("handleDiscordMessagingAction", () => {
       },
       enableAllActions,
     );
-    expect(removeOwnReactionsDiscord).toHaveBeenCalledWith("C1", "M1");
+    expect(removeOwnReactionsDiscord).toHaveBeenCalledWith("C1", "M1", {});
   });
 
   it("removes reactions when remove flag set", async () => {
@@ -134,7 +134,7 @@ describe("handleDiscordMessagingAction", () => {
       },
       enableAllActions,
     );
-    expect(removeReactionDiscord).toHaveBeenCalledWith("C1", "M1", "✅");
+    expect(removeReactionDiscord).toHaveBeenCalledWith("C1", "M1", "✅", {});
   });
 
   it("rejects removes without emoji", async () => {
@@ -262,6 +262,28 @@ describe("handleDiscordMessagingAction", () => {
       silent: true,
     });
     expect(sendMessageDiscord).not.toHaveBeenCalled();
+  });
+
+  it("forwards trusted mediaLocalRoots into sendMessageDiscord", async () => {
+    sendMessageDiscord.mockClear();
+    await handleDiscordMessagingAction(
+      "sendMessage",
+      {
+        to: "channel:123",
+        content: "hello",
+        mediaUrl: "/tmp/image.png",
+      },
+      enableAllActions,
+      { mediaLocalRoots: ["/tmp/agent-root"] },
+    );
+    expect(sendMessageDiscord).toHaveBeenCalledWith(
+      "channel:123",
+      "hello",
+      expect.objectContaining({
+        mediaUrl: "/tmp/image.png",
+        mediaLocalRoots: ["/tmp/agent-root"],
+      }),
+    );
   });
 
   it("rejects voice messages that include content", async () => {

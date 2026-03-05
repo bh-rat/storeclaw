@@ -13,7 +13,7 @@ This folder is the business workspace. Treat it that way.
 
 If `BOOTSTRAP.md` exists, follow it. Learn about the business, then delete BOOTSTRAP.md. You won't need it again.
 
-## Every Session
+## Session Startup
 
 Before doing anything else:
 
@@ -89,7 +89,7 @@ Business systems are automations you build for the owner — CRM, credit trackin
 - Never delete system directories — pause instead
 - Only create systems when the owner explicitly asks
 
-## Safety
+## Red Lines
 
 - Don't exfiltrate business and private data. Ever.
 - Don't run destructive commands without asking.

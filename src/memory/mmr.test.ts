@@ -135,13 +135,6 @@ describe("empty input behavior", () => {
   });
 });
 
-describe("empty input behavior", () => {
-  it("returns empty array for empty input", () => {
-    expect(mmrRerank([])).toEqual([]);
-    expect(applyMMRToHybridResults([])).toEqual([]);
-  });
-});
-
 describe("mmrRerank", () => {
   describe("edge cases", () => {
     it("returns single item unchanged", () => {

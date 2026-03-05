@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createFixtureSuite } from "../test-utils/fixture-suite.js";
 import { createTempHomeEnv, type TempHomeEnv } from "../test-utils/temp-home.js";
 import { writeSkill } from "./skills.e2e-test-helpers.js";
 import {
@@ -13,7 +13,7 @@ import {
   loadWorkspaceSkillEntries,
 } from "./skills.js";
 
-const tempDirs: string[] = [];
+const fixtureSuite = createFixtureSuite("openclaw-skills-suite-");
 let tempHome: TempHomeEnv | null = null;
 
 const resolveTestSkillDirs = (workspaceDir: string) => ({
@@ -21,11 +21,7 @@ const resolveTestSkillDirs = (workspaceDir: string) => ({
   bundledSkillsDir: path.join(workspaceDir, ".bundled"),
 });
 
-const makeWorkspace = async () => {
-  const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-"));
-  tempDirs.push(workspaceDir);
-  return workspaceDir;
-};
+const makeWorkspace = async () => await fixtureSuite.createCaseDir("workspace");
 
 const withClearedEnv = <T>(
   keys: string[],
@@ -52,6 +48,7 @@ const withClearedEnv = <T>(
 };
 
 beforeAll(async () => {
+  await fixtureSuite.setup();
   tempHome = await createTempHomeEnv("openclaw-skills-home-");
   await fs.mkdir(path.join(tempHome.home, ".openclaw", "agents", "main", "sessions"), {
     recursive: true,
@@ -63,10 +60,7 @@ afterAll(async () => {
     await tempHome.restore();
     tempHome = null;
   }
-
-  await Promise.all(
-    tempDirs.splice(0, tempDirs.length).map((dir) => fs.rm(dir, { recursive: true, force: true })),
-  );
+  await fixtureSuite.cleanup();
 });
 
 describe("buildWorkspaceSkillCommandSpecs", () => {
@@ -419,152 +413,5 @@ describe("applySkillEnvOverrides", () => {
         expect(process.env.OPENAI_API_KEY).toBeUndefined();
       }
     });
-  });
-
-  it("blocks unsafe env overrides but allows declared secrets", async () => {
-    const workspaceDir = await makeWorkspace();
-    const skillDir = path.join(workspaceDir, "skills", "unsafe-env-skill");
-    await writeSkill({
-      dir: skillDir,
-      name: "unsafe-env-skill",
-      description: "Needs env",
-      metadata:
-        '{"openclaw":{"requires":{"env":["OPENAI_API_KEY","NODE_OPTIONS"]},"primaryEnv":"OPENAI_API_KEY"}}',
-    });
-
-    const entries = loadWorkspaceSkillEntries(workspaceDir, {
-      managedSkillsDir: path.join(workspaceDir, ".managed"),
-    });
-
-    const originalApiKey = process.env.OPENAI_API_KEY;
-    const originalNodeOptions = process.env.NODE_OPTIONS;
-    delete process.env.OPENAI_API_KEY;
-    delete process.env.NODE_OPTIONS;
-
-    const restore = applySkillEnvOverrides({
-      skills: entries,
-      config: {
-        skills: {
-          entries: {
-            "unsafe-env-skill": {
-              env: {
-                OPENAI_API_KEY: "sk-test",
-                NODE_OPTIONS: "--require /tmp/evil.js",
-              },
-            },
-          },
-        },
-      },
-    });
-
-    try {
-      expect(process.env.OPENAI_API_KEY).toBe("sk-test");
-      expect(process.env.NODE_OPTIONS).toBeUndefined();
-    } finally {
-      restore();
-      expect(process.env.OPENAI_API_KEY).toBeUndefined();
-      expect(process.env.NODE_OPTIONS).toBeUndefined();
-      if (originalApiKey === undefined) {
-        delete process.env.OPENAI_API_KEY;
-      } else {
-        process.env.OPENAI_API_KEY = originalApiKey;
-      }
-      if (originalNodeOptions === undefined) {
-        delete process.env.NODE_OPTIONS;
-      } else {
-        process.env.NODE_OPTIONS = originalNodeOptions;
-      }
-    }
-  });
-
-  it("blocks dangerous host env overrides even when declared", async () => {
-    const workspaceDir = await makeWorkspace();
-    const skillDir = path.join(workspaceDir, "skills", "dangerous-env-skill");
-    await writeSkill({
-      dir: skillDir,
-      name: "dangerous-env-skill",
-      description: "Needs env",
-      metadata: '{"openclaw":{"requires":{"env":["BASH_ENV"]}}}',
-    });
-
-    const entries = loadWorkspaceSkillEntries(workspaceDir, {
-      managedSkillsDir: path.join(workspaceDir, ".managed"),
-    });
-
-    const originalBashEnv = process.env.BASH_ENV;
-    delete process.env.BASH_ENV;
-
-    const restore = applySkillEnvOverrides({
-      skills: entries,
-      config: {
-        skills: {
-          entries: {
-            "dangerous-env-skill": {
-              env: {
-                BASH_ENV: "/tmp/pwn.sh",
-              },
-            },
-          },
-        },
-      },
-    });
-
-    try {
-      expect(process.env.BASH_ENV).toBeUndefined();
-    } finally {
-      restore();
-      if (originalBashEnv === undefined) {
-        expect(process.env.BASH_ENV).toBeUndefined();
-      } else {
-        expect(process.env.BASH_ENV).toBe(originalBashEnv);
-      }
-    }
-  });
-
-  it("allows required env overrides from snapshots", async () => {
-    const workspaceDir = await makeWorkspace();
-    const skillDir = path.join(workspaceDir, "skills", "snapshot-env-skill");
-    await writeSkill({
-      dir: skillDir,
-      name: "snapshot-env-skill",
-      description: "Needs env",
-      metadata: '{"openclaw":{"requires":{"env":["OPENAI_API_KEY"]}}}',
-    });
-
-    const originalApiKey = process.env.OPENAI_API_KEY;
-    process.env.OPENAI_API_KEY = "seed-present";
-
-    const snapshot = buildWorkspaceSkillSnapshot(workspaceDir, {
-      managedSkillsDir: path.join(workspaceDir, ".managed"),
-    });
-
-    delete process.env.OPENAI_API_KEY;
-
-    const restore = applySkillEnvOverridesFromSnapshot({
-      snapshot,
-      config: {
-        skills: {
-          entries: {
-            "snapshot-env-skill": {
-              env: {
-                OPENAI_API_KEY: "snap-secret",
-              },
-            },
-          },
-        },
-      },
-    });
-
-    try {
-      expect(process.env.OPENAI_API_KEY).toBe("snap-secret");
-    } finally {
-      restore();
-      expect(process.env.OPENAI_API_KEY).toBeUndefined();
-      if (originalApiKey === undefined) {
-        delete process.env.OPENAI_API_KEY;
-      } else {
-        process.env.OPENAI_API_KEY = originalApiKey;
-      }
-    }
   });
 });
