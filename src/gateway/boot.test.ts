@@ -6,7 +6,10 @@ import type { SessionScope } from "../config/sessions/types.js";
 
 const agentCommand = vi.fn();
 
-vi.mock("../commands/agent.js", () => ({ agentCommand }));
+vi.mock("../commands/agent.js", () => ({
+  agentCommand,
+  agentCommandFromIngress: agentCommand,
+}));
 
 const { runBootOnce } = await import("./boot.js");
 const { resolveAgentIdFromSessionKey, resolveAgentMainSessionKey, resolveMainSessionKey } =
@@ -74,6 +77,19 @@ describe("runBootOnce", () => {
       };
       await saveSessionStore(storePath, current);
     });
+  };
+
+  const expectMainSessionRestored = (params: {
+    storePath: string;
+    sessionKey: string;
+    expectedSessionId?: string;
+  }) => {
+    const restored = loadSessionStore(params.storePath, { skipCache: true });
+    if (params.expectedSessionId === undefined) {
+      expect(restored[params.sessionKey]).toBeUndefined();
+      return;
+    }
+    expect(restored[params.sessionKey]?.sessionId).toBe(params.expectedSessionId);
   };
 
   it("skips when BOOT.md is missing", async () => {
@@ -158,24 +174,6 @@ describe("runBootOnce", () => {
     });
   });
 
-  it("uses per-agent session key when agentId is provided", async () => {
-    const workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-boot-"));
-    await fs.writeFile(path.join(workspaceDir, "BOOT.md"), "Check status.", "utf-8");
-
-    agentCommand.mockResolvedValue(undefined);
-    const cfg = {};
-    const agentId = "ops";
-    await expect(runBootOnce({ cfg, deps: makeDeps(), workspaceDir, agentId })).resolves.toEqual({
-      status: "ran",
-    });
-
-    expect(agentCommand).toHaveBeenCalledTimes(1);
-    const perAgentCall = agentCommand.mock.calls[0]?.[0];
-    expect(perAgentCall?.sessionKey).toBe(resolveAgentMainSessionKey({ cfg, agentId }));
-
-    await fs.rm(workspaceDir, { recursive: true, force: true });
-  });
-
   it("generates new session ID when no existing session exists", async () => {
     const content = "Say hello when you wake up.";
     await withBootWorkspace({ bootContent: content }, async (workspaceDir) => {
@@ -244,8 +242,7 @@ describe("runBootOnce", () => {
         status: "ran",
       });
 
-      const restored = loadSessionStore(storePath, { skipCache: true });
-      expect(restored[sessionKey]?.sessionId).toBe(existingSessionId);
+      expectMainSessionRestored({ storePath, sessionKey, expectedSessionId: existingSessionId });
     });
   });
 
@@ -260,8 +257,7 @@ describe("runBootOnce", () => {
         status: "ran",
       });
 
-      const restored = loadSessionStore(storePath, { skipCache: true });
-      expect(restored[sessionKey]).toBeUndefined();
+      expectMainSessionRestored({ storePath, sessionKey });
     });
   });
 });

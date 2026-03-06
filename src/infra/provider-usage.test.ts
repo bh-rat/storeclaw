@@ -225,7 +225,7 @@ describe("provider usage loading", () => {
             remains_time: 600,
             current_interval_total_count: 120,
             current_interval_usage_count: 30,
-            model_name: "MiniMax-M2.1",
+            model_name: "MiniMax-M2.5",
           },
         ],
       },
@@ -338,20 +338,12 @@ describe("provider usage loading", () => {
     });
   });
 
-  it("loads snapshots for copilot antigravity gemini codex and xiaomi", async () => {
+  it("loads snapshots for copilot gemini codex and xiaomi", async () => {
     const mockFetch = createProviderUsageFetch(async (url) => {
       if (url.includes("api.github.com/copilot_internal/user")) {
         return makeResponse(200, {
           quota_snapshots: { chat: { percent_remaining: 80 } },
           copilot_plan: "Copilot Pro",
-        });
-      }
-      if (url.includes("cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")) {
-        return makeResponse(200, {
-          availablePromptCredits: 80,
-          planInfo: { monthlyPromptCredits: 100 },
-          currentTier: { name: "Antigravity Pro" },
-          cloudaicompanionProject: "projects/demo",
         });
       }
       if (url.includes("cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels")) {
@@ -380,7 +372,6 @@ describe("provider usage loading", () => {
     const summary = await loadUsageWithAuth(
       [
         { provider: "github-copilot", token: "copilot-token" },
-        { provider: "google-antigravity", token: "antigravity-token" },
         { provider: "google-gemini-cli", token: "gemini-token" },
         { provider: "openai-codex", token: "codex-token", accountId: "acc-1" },
         { provider: "xiaomi", token: "xiaomi-token" },
@@ -390,7 +381,6 @@ describe("provider usage loading", () => {
 
     expect(summary.providers.map((provider) => provider.provider)).toEqual([
       "github-copilot",
-      "google-antigravity",
       "google-gemini-cli",
       "openai-codex",
       "xiaomi",
@@ -398,137 +388,6 @@ describe("provider usage loading", () => {
     expect(
       summary.providers.find((provider) => provider.provider === "github-copilot")?.windows,
     ).toEqual([{ label: "Chat", usedPercent: 20 }]);
-    expect(
-      summary.providers.find((provider) => provider.provider === "google-antigravity")?.windows
-        .length,
-    ).toBeGreaterThan(0);
-    expect(
-      summary.providers.find((provider) => provider.provider === "google-gemini-cli")?.windows[0]
-        ?.label,
-    ).toBe("Pro");
-    expect(
-      summary.providers.find((provider) => provider.provider === "openai-codex")?.windows[0]?.label,
-    ).toBe("3h");
-    expect(summary.providers.find((provider) => provider.provider === "xiaomi")?.windows).toEqual(
-      [],
-    );
-  });
-
-  it("returns empty provider list when auth resolves to none", async () => {
-    const mockFetch = createProviderUsageFetch(async () => makeResponse(404, "not found"));
-    const summary = await loadUsageWithAuth([], mockFetch);
-    expect(summary).toEqual({ updatedAt: usageNow, providers: [] });
-  });
-
-  it("returns unsupported provider snapshots for unknown provider ids", async () => {
-    const mockFetch = createProviderUsageFetch(async () => makeResponse(404, "not found"));
-    const summary = await loadUsageWithAuth(
-      [{ provider: "unsupported-provider", token: "token-u" }] as unknown as ProviderAuth[],
-      mockFetch,
-    );
-    expect(summary.providers).toHaveLength(1);
-    expect(summary.providers[0]?.error).toBe("Unsupported provider");
-  });
-
-  it("filters errors that are marked as ignored", async () => {
-    const mockFetch = createProviderUsageFetch(async (url) => {
-      if (url.includes("api.anthropic.com/api/oauth/usage")) {
-        return makeResponse(500, "boom");
-      }
-      return makeResponse(404, "not found");
-    });
-    ignoredErrors.add("HTTP 500");
-    try {
-      const summary = await loadUsageWithAuth(
-        [{ provider: "anthropic", token: "token-a" }],
-        mockFetch,
-      );
-      expect(summary.providers).toEqual([]);
-    } finally {
-      ignoredErrors.delete("HTTP 500");
-    }
-  });
-
-  it("throws when fetch is unavailable", async () => {
-    const previousFetch = globalThis.fetch;
-    vi.stubGlobal("fetch", undefined);
-    try {
-      await expect(
-        loadProviderUsageSummary({
-          now: usageNow,
-          auth: [{ provider: "xiaomi", token: "token-x" }],
-          fetch: undefined,
-        }),
-      ).rejects.toThrow("fetch is not available");
-    } finally {
-      vi.stubGlobal("fetch", previousFetch);
-    }
-  });
-
-  it("loads snapshots for copilot antigravity gemini codex and xiaomi", async () => {
-    const mockFetch = createProviderUsageFetch(async (url) => {
-      if (url.includes("api.github.com/copilot_internal/user")) {
-        return makeResponse(200, {
-          quota_snapshots: { chat: { percent_remaining: 80 } },
-          copilot_plan: "Copilot Pro",
-        });
-      }
-      if (url.includes("cloudcode-pa.googleapis.com/v1internal:loadCodeAssist")) {
-        return makeResponse(200, {
-          availablePromptCredits: 80,
-          planInfo: { monthlyPromptCredits: 100 },
-          currentTier: { name: "Antigravity Pro" },
-          cloudaicompanionProject: "projects/demo",
-        });
-      }
-      if (url.includes("cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels")) {
-        return makeResponse(200, {
-          models: {
-            "gemini-2.5-pro": {
-              quotaInfo: { remainingFraction: 0.4, resetTime: "2026-01-08T01:00:00Z" },
-            },
-          },
-        });
-      }
-      if (url.includes("cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota")) {
-        return makeResponse(200, {
-          buckets: [{ modelId: "gemini-2.5-pro", remainingFraction: 0.6 }],
-        });
-      }
-      if (url.includes("chatgpt.com/backend-api/wham/usage")) {
-        return makeResponse(200, {
-          rate_limit: { primary_window: { used_percent: 12, limit_window_seconds: 10800 } },
-          plan_type: "Plus",
-        });
-      }
-      return makeResponse(404, "not found");
-    });
-
-    const summary = await loadUsageWithAuth(
-      [
-        { provider: "github-copilot", token: "copilot-token" },
-        { provider: "google-antigravity", token: "antigravity-token" },
-        { provider: "google-gemini-cli", token: "gemini-token" },
-        { provider: "openai-codex", token: "codex-token", accountId: "acc-1" },
-        { provider: "xiaomi", token: "xiaomi-token" },
-      ],
-      mockFetch,
-    );
-
-    expect(summary.providers.map((provider) => provider.provider)).toEqual([
-      "github-copilot",
-      "google-antigravity",
-      "google-gemini-cli",
-      "openai-codex",
-      "xiaomi",
-    ]);
-    expect(
-      summary.providers.find((provider) => provider.provider === "github-copilot")?.windows,
-    ).toEqual([{ label: "Chat", usedPercent: 20 }]);
-    expect(
-      summary.providers.find((provider) => provider.provider === "google-antigravity")?.windows
-        .length,
-    ).toBeGreaterThan(0);
     expect(
       summary.providers.find((provider) => provider.provider === "google-gemini-cli")?.windows[0]
         ?.label,

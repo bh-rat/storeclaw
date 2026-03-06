@@ -7,7 +7,12 @@ import type {
 } from "../config/types.approvals.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { normalizeAccountId, parseAgentSessionKey } from "../routing/session-key.js";
-import { isDeliverableMessageChannel, normalizeMessageChannel } from "../utils/message-channel.js";
+import { compileSafeRegex, testRegexWithBoundedInput } from "../security/safe-regex.js";
+import {
+  isDeliverableMessageChannel,
+  normalizeMessageChannel,
+  type DeliverableMessageChannel,
+} from "../utils/message-channel.js";
 import type {
   ExecApprovalDecision,
   ExecApprovalRequest,
@@ -17,7 +22,6 @@ import { deliverOutboundPayloads } from "./outbound/deliver.js";
 import { resolveSessionDeliveryTarget } from "./outbound/targets.js";
 
 const log = createSubsystemLogger("gateway/exec-approvals");
-
 export type { ExecApprovalRequest, ExecApprovalResolved };
 
 type ForwardTarget = ExecApprovalForwardTarget & { source: "session" | "target" };
@@ -29,7 +33,7 @@ type PendingApproval = {
 };
 
 export type ExecApprovalForwarder = {
-  handleRequested: (request: ExecApprovalRequest) => Promise<void>;
+  handleRequested: (request: ExecApprovalRequest) => Promise<boolean>;
   handleResolved: (resolved: ExecApprovalResolved) => Promise<void>;
   stop: () => void;
 };
@@ -52,11 +56,11 @@ function normalizeMode(mode?: ExecApprovalForwardingConfig["mode"]) {
 
 function matchSessionFilter(sessionKey: string, patterns: string[]): boolean {
   return patterns.some((pattern) => {
-    try {
-      return sessionKey.includes(pattern) || new RegExp(pattern).test(sessionKey);
-    } catch {
-      return sessionKey.includes(pattern);
+    if (sessionKey.includes(pattern)) {
+      return true;
     }
+    const regex = compileSafeRegex(pattern);
+    return regex ? testRegexWithBoundedInput(regex, sessionKey) : false;
   });
 }
 
@@ -167,6 +171,12 @@ function buildRequestMessage(request: ExecApprovalRequest, nowMs: number) {
   if (request.request.cwd) {
     lines.push(`CWD: ${request.request.cwd}`);
   }
+  if (request.request.nodeId) {
+    lines.push(`Node: ${request.request.nodeId}`);
+  }
+  if (Array.isArray(request.request.envKeys) && request.request.envKeys.length > 0) {
+    lines.push(`Env overrides: ${request.request.envKeys.join(", ")}`);
+  }
   if (request.request.host) {
     lines.push(`Host: ${request.request.host}`);
   }
@@ -205,6 +215,11 @@ function buildExpiredMessage(request: ExecApprovalRequest) {
   return `⏱️ Exec approval expired. ID: ${request.id}`;
 }
 
+function normalizeTurnSourceChannel(value?: string | null): DeliverableMessageChannel | undefined {
+  const normalized = value ? normalizeMessageChannel(value) : undefined;
+  return normalized && isDeliverableMessageChannel(normalized) ? normalized : undefined;
+}
+
 function defaultResolveSessionTarget(params: {
   cfg: OpenClawConfig;
   request: ExecApprovalRequest;
@@ -221,7 +236,14 @@ function defaultResolveSessionTarget(params: {
   if (!entry) {
     return null;
   }
-  const target = resolveSessionDeliveryTarget({ entry, requestedChannel: "last" });
+  const target = resolveSessionDeliveryTarget({
+    entry,
+    requestedChannel: "last",
+    turnSourceChannel: normalizeTurnSourceChannel(params.request.request.turnSourceChannel),
+    turnSourceTo: params.request.request.turnSourceTo?.trim() || undefined,
+    turnSourceAccountId: params.request.request.turnSourceAccountId?.trim() || undefined,
+    turnSourceThreadId: params.request.request.turnSourceThreadId ?? undefined,
+  });
   if (!target.channel || !target.to) {
     return null;
   }
@@ -318,11 +340,11 @@ export function createExecApprovalForwarder(
   const resolveSessionTarget = deps.resolveSessionTarget ?? defaultResolveSessionTarget;
   const pending = new Map<string, PendingApproval>();
 
-  const handleRequested = async (request: ExecApprovalRequest) => {
+  const handleRequested = async (request: ExecApprovalRequest): Promise<boolean> => {
     const cfg = getConfig();
     const config = cfg.approvals?.exec;
     if (!shouldForward({ config, request })) {
-      return;
+      return false;
     }
     const filteredTargets = resolveForwardTargets({
       cfg,
@@ -332,7 +354,7 @@ export function createExecApprovalForwarder(
     }).filter((target) => !shouldSkipDiscordForwarding(target, cfg));
 
     if (filteredTargets.length === 0) {
-      return;
+      return false;
     }
 
     const expiresInMs = Math.max(0, request.expiresAtMs - nowMs());
@@ -353,17 +375,20 @@ export function createExecApprovalForwarder(
     pending.set(request.id, pendingEntry);
 
     if (pending.get(request.id) !== pendingEntry) {
-      return;
+      return false;
     }
 
     const text = buildRequestMessage(request, nowMs());
-    await deliverToTargets({
+    void deliverToTargets({
       cfg,
       targets: filteredTargets,
       text,
       deliver,
       shouldSend: () => pending.get(request.id) === pendingEntry,
+    }).catch((err) => {
+      log.error(`exec approvals: failed to deliver request ${request.id}: ${String(err)}`);
     });
+    return true;
   };
 
   const handleResolved = async (resolved: ExecApprovalResolved) => {
