@@ -31,6 +31,9 @@ export const DEFAULT_HEARTBEAT_FILENAME = "HEARTBEAT.md";
 export const DEFAULT_BOOTSTRAP_FILENAME = "BOOTSTRAP.md";
 export const DEFAULT_MEMORY_FILENAME = "MEMORY.md";
 export const DEFAULT_MEMORY_ALT_FILENAME = "memory.md";
+export const DEFAULT_BUSINESS_FILENAME = "BUSINESS.md";
+export const DEFAULT_OWNER_FILENAME = "OWNER.md";
+export const DEFAULT_TEAM_FILENAME = "TEAM.md";
 const WORKSPACE_STATE_DIRNAME = ".openclaw";
 const WORKSPACE_STATE_FILENAME = "workspace-state.json";
 const WORKSPACE_STATE_VERSION = 1;
@@ -138,7 +141,10 @@ export type WorkspaceBootstrapFileName =
   | typeof DEFAULT_HEARTBEAT_FILENAME
   | typeof DEFAULT_BOOTSTRAP_FILENAME
   | typeof DEFAULT_MEMORY_FILENAME
-  | typeof DEFAULT_MEMORY_ALT_FILENAME;
+  | typeof DEFAULT_MEMORY_ALT_FILENAME
+  | typeof DEFAULT_BUSINESS_FILENAME
+  | typeof DEFAULT_OWNER_FILENAME
+  | typeof DEFAULT_TEAM_FILENAME;
 
 export type WorkspaceBootstrapFile = {
   name: WorkspaceBootstrapFileName;
@@ -330,6 +336,9 @@ export async function ensureAgentWorkspace(params?: {
   userPath?: string;
   heartbeatPath?: string;
   bootstrapPath?: string;
+  businessPath?: string;
+  ownerPath?: string;
+  teamPath?: string;
 }> {
   const rawDir = params?.dir?.trim() ? params.dir.trim() : DEFAULT_AGENT_WORKSPACE_DIR;
   const dir = resolveUserPath(rawDir);
@@ -346,6 +355,9 @@ export async function ensureAgentWorkspace(params?: {
   const userPath = path.join(dir, DEFAULT_USER_FILENAME);
   const heartbeatPath = path.join(dir, DEFAULT_HEARTBEAT_FILENAME);
   const bootstrapPath = path.join(dir, DEFAULT_BOOTSTRAP_FILENAME);
+  const businessPath = path.join(dir, DEFAULT_BUSINESS_FILENAME);
+  const ownerPath = path.join(dir, DEFAULT_OWNER_FILENAME);
+  const teamPath = path.join(dir, DEFAULT_TEAM_FILENAME);
   const statePath = resolveWorkspaceStatePath(dir);
 
   const isBrandNewWorkspace = await (async () => {
@@ -381,6 +393,12 @@ export async function ensureAgentWorkspace(params?: {
   await writeFileIfMissing(identityPath, identityTemplate);
   await writeFileIfMissing(userPath, userTemplate);
   await writeFileIfMissing(heartbeatPath, heartbeatTemplate);
+  const businessTemplate = await loadTemplate(DEFAULT_BUSINESS_FILENAME);
+  const ownerTemplate = await loadTemplate(DEFAULT_OWNER_FILENAME);
+  const teamTemplate = await loadTemplate(DEFAULT_TEAM_FILENAME);
+  await writeFileIfMissing(businessPath, businessTemplate);
+  await writeFileIfMissing(ownerPath, ownerTemplate);
+  await writeFileIfMissing(teamPath, teamTemplate);
 
   let state = await readWorkspaceOnboardingState(statePath);
   let stateDirty = false;
@@ -455,6 +473,9 @@ export async function ensureAgentWorkspace(params?: {
     userPath,
     heartbeatPath,
     bootstrapPath,
+    businessPath,
+    ownerPath,
+    teamPath,
   };
 }
 
@@ -529,6 +550,18 @@ export async function loadWorkspaceBootstrapFiles(dir: string): Promise<Workspac
     {
       name: DEFAULT_BOOTSTRAP_FILENAME,
       filePath: path.join(resolvedDir, DEFAULT_BOOTSTRAP_FILENAME),
+    },
+    {
+      name: DEFAULT_BUSINESS_FILENAME,
+      filePath: path.join(resolvedDir, DEFAULT_BUSINESS_FILENAME),
+    },
+    {
+      name: DEFAULT_OWNER_FILENAME,
+      filePath: path.join(resolvedDir, DEFAULT_OWNER_FILENAME),
+    },
+    {
+      name: DEFAULT_TEAM_FILENAME,
+      filePath: path.join(resolvedDir, DEFAULT_TEAM_FILENAME),
     },
   ];
 
