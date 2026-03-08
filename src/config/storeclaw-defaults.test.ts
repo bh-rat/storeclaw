@@ -62,12 +62,12 @@ describe("applyStoreclawDefaults", () => {
   it("preserves other plugins/skills config fields", () => {
     const result = applyStoreclawDefaults({
       plugins: { enabled: false },
-      skills: { load: { paths: ["/tmp/skills"] } },
+      skills: { load: { extraDirs: ["/tmp/skills"] } },
     });
 
     expect(result.plugins?.enabled).toBe(false);
     expect(result.plugins?.deny).toBeDefined();
-    expect(result.skills?.load?.paths).toEqual(["/tmp/skills"]);
+    expect(result.skills?.load?.extraDirs).toEqual(["/tmp/skills"]);
     expect(result.skills?.allowBundled).toBeDefined();
   });
 });
