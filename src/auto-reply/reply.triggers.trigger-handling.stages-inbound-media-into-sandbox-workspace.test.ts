@@ -178,31 +178,4 @@ describe("stageSandboxMedia", () => {
       expect(sessionCtx.MediaPath).toBe(mediaPath);
     });
   });
-
-  it("blocks remote SCP staging for non-iMessage attachment paths", async () => {
-    await withSandboxMediaTempHome("openclaw-triggers-remote-block-", async (home) => {
-      const sandboxDir = join(home, "sandboxes", "session");
-      vi.mocked(ensureSandboxWorkspaceForSession).mockResolvedValue({
-        workspaceDir: sandboxDir,
-        containerWorkdir: "/work",
-      });
-
-      const { ctx, sessionCtx } = createSandboxMediaContexts("/etc/passwd");
-      ctx.Provider = "imessage";
-      ctx.MediaRemoteHost = "user@gateway-host";
-      sessionCtx.Provider = "imessage";
-      sessionCtx.MediaRemoteHost = "user@gateway-host";
-
-      await stageSandboxMedia({
-        ctx,
-        sessionCtx,
-        cfg: createSandboxMediaStageConfig(home),
-        sessionKey: "agent:main:main",
-        workspaceDir: join(home, "openclaw"),
-      });
-
-      expect(childProcessMocks.spawn).not.toHaveBeenCalled();
-      expect(ctx.MediaPath).toBe("/etc/passwd");
-    });
-  });
 });

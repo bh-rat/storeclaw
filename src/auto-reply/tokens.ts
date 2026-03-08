@@ -87,23 +87,3 @@ export function isSilentReplyPrefixText(
   // because NO_REPLY streaming can transiently emit that fragment.
   return tokenUpper === SILENT_REPLY_TOKEN && normalized === "NO";
 }
-
-export function isSilentReplyPrefixText(
-  text: string | undefined,
-  token: string = SILENT_REPLY_TOKEN,
-): boolean {
-  if (!text) {
-    return false;
-  }
-  const normalized = text.trimStart().toUpperCase();
-  if (!normalized) {
-    return false;
-  }
-  if (!normalized.includes("_")) {
-    return false;
-  }
-  if (/[^A-Z_]/.test(normalized)) {
-    return false;
-  }
-  return token.toUpperCase().startsWith(normalized);
-}

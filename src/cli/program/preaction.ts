@@ -33,6 +33,8 @@ const PLUGIN_REQUIRED_COMMANDS = new Set([
   "agents",
   "configure",
   "onboard",
+  "status",
+  "health",
 ]);
 const CONFIG_GUARD_BYPASS_COMMANDS = new Set(["doctor", "completion", "secrets"]);
 const JSON_PARSE_ONLY_COMMANDS = new Set(["config set"]);
@@ -94,26 +96,6 @@ function isJsonOutputMode(commandPath: string[], argv: string[]): boolean {
     return false;
   }
   return true;
-}
-
-function getRootCommand(command: Command): Command {
-  let current = command;
-  while (current.parent) {
-    current = current.parent;
-  }
-  return current;
-}
-
-function getCliLogLevel(actionCommand: Command): LogLevel | undefined {
-  const root = getRootCommand(actionCommand);
-  if (typeof root.getOptionValueSource !== "function") {
-    return undefined;
-  }
-  if (root.getOptionValueSource("logLevel") !== "cli") {
-    return undefined;
-  }
-  const logLevel = root.opts<Record<string, unknown>>().logLevel;
-  return typeof logLevel === "string" ? (logLevel as LogLevel) : undefined;
 }
 
 export function registerPreActionHooks(program: Command, programVersion: string) {

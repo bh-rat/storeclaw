@@ -164,35 +164,6 @@ Example:
 }
 ```
 
-## Stale call reaper
-
-Use `staleCallReaperSeconds` to end calls that never receive a terminal webhook
-(for example, notify-mode calls that never complete). The default is `0`
-(disabled).
-
-Recommended ranges:
-
-- **Production:** `120`–`300` seconds for notify-style flows.
-- Keep this value **higher than `maxDurationSeconds`** so normal calls can
-  finish. A good starting point is `maxDurationSeconds + 30–60` seconds.
-
-Example:
-
-```json5
-{
-  plugins: {
-    entries: {
-      "voice-call": {
-        config: {
-          maxDurationSeconds: 300,
-          staleCallReaperSeconds: 360,
-        },
-      },
-    },
-  },
-}
-```
-
 ## Webhook Security
 
 When a proxy or tunnel sits in front of the Gateway, the plugin reconstructs the

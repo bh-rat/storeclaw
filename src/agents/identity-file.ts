@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DEFAULT_BUSINESS_FILENAME, DEFAULT_IDENTITY_FILENAME } from "./workspace.js";
+import { DEFAULT_IDENTITY_FILENAME } from "./workspace.js";
+
+const DEFAULT_BUSINESS_FILENAME = "BUSINESS.md";
 
 export type AgentIdentityFile = {
   name?: string;
